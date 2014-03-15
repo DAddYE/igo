@@ -42,7 +42,8 @@ type Scanner struct {
 	offset     int  // character offset
 	rdOffset   int  // reading offset (position after current character)
 	lineOffset int  // current line offset
-	noSemi     bool // avoid terminator
+	noSemi     bool // avoid terminator (will wait '\n' before reset)
+	unfinished bool // avoid terminator on unfinished expressions (will wait next token before reset)
 
 	// indent state
 	indent indent // stacks of indentation levels
@@ -91,7 +92,6 @@ func (s *Scanner) next() {
 		}
 		s.rdOffset += w
 		s.ch = r
-
 	} else {
 		s.offset = len(s.src)
 		if s.ch == '\n' {
@@ -583,8 +583,8 @@ func (s *Scanner) switch4(tok0, tok1 token.Token, ch2 rune, tok2, tok3 token.Tok
 //
 func (s *Scanner) Scan() (pos token.Pos, tok token.Token, lit string) {
 newLine:
-
 	blankLine := false
+
 
 	if s.offset == s.lineOffset {
 
@@ -606,7 +606,7 @@ newLine:
 		
 		// If we are not inside [](){}
 		// Comments '#' or empty lines, should not affect indentation
-		if s.indent.level == 0 && !blankLine {
+		if s.indent.level == 0 && !blankLine && !s.unfinished {
 			switch {
 			case cl == s.indent.stack[s.indent.idx]:
 				// noting to do
@@ -671,6 +671,9 @@ scanAgain:
 				s.noSemi = false
 				goto newLine
 			}
+			if s.unfinished {
+				goto newLine
+			}
 			return pos, token.SEMICOLON, "\n"
 		case '"':
 			if s.ch == '"' {
@@ -726,12 +729,7 @@ scanAgain:
 		case '+':
 			tok = s.switch3(token.ADD, token.ADD_ASSIGN, '+', token.INC)
 		case '-':
-			if s.ch == '>' {
-				s.next()
-				tok = token.RARROW
-			} else {
-				tok = s.switch3(token.SUB, token.SUB_ASSIGN, '-', token.DEC)
-			}
+			tok = s.switch3(token.SUB, token.SUB_ASSIGN, '-', token.DEC)
 		case '*':
 			tok = s.switch2(token.MUL, token.MUL_ASSIGN)
 		case '#':
@@ -745,10 +743,16 @@ scanAgain:
 			tok = token.COMMENT
 		case '/':
 			tok = s.switch2(token.QUO, token.QUO_ASSIGN)
+			s.unfinished = true
+			return
 		case '%':
 			tok = s.switch2(token.REM, token.REM_ASSIGN)
+			s.unfinished = true
+			return
 		case '^':
 			tok = s.switch2(token.XOR, token.XOR_ASSIGN)
+			s.unfinished = true
+			return
 		case '<':
 			if s.ch == '-' {
 				s.next()
@@ -756,12 +760,20 @@ scanAgain:
 			} else {
 				tok = s.switch4(token.LSS, token.LEQ, '<', token.SHL, token.SHL_ASSIGN)
 			}
+			s.unfinished = true
+			return
 		case '>':
 			tok = s.switch4(token.GTR, token.GEQ, '>', token.SHR, token.SHR_ASSIGN)
+			s.unfinished = true
+			return
 		case '=':
 			tok = s.switch2(token.ASSIGN, token.EQL)
+			s.unfinished = true
+			return
 		case '!':
 			tok = s.switch2(token.NOT, token.NEQ)
+			s.unfinished = true
+			return
 		case '&':
 			if s.ch == '^' {
 				s.next()
@@ -769,8 +781,12 @@ scanAgain:
 			} else {
 				tok = s.switch3(token.AND, token.AND_ASSIGN, '&', token.LAND)
 			}
+			s.unfinished = true
+			return
 		case '|':
 			tok = s.switch3(token.OR, token.OR_ASSIGN, '|', token.LOR)
+			s.unfinished = true
+			return
 		default:
 			// next reports unexpected BOMs - don't repeat
 			if ch != bom {
@@ -780,5 +796,6 @@ scanAgain:
 			lit = string(ch)
 		}
 	}
+	s.unfinished = false	
 	return
 }
