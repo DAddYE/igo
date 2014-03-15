@@ -649,6 +649,11 @@ scanAgain:
 		if len(lit) > 1 {
 			// keywords are longer than one letter - avoid lookup otherwise
 			tok = token.Lookup(lit)
+			switch tok {
+			case token.CASE, token.DEFAULT:
+				s.unfinished = true
+				return
+			}
 		} else {
 			tok = token.IDENT
 		}
@@ -691,6 +696,10 @@ scanAgain:
 			lit = s.scanRawString()
 		case ':':
 			tok = s.switch2(token.COLON, token.DEFINE)
+			if tok == token.DEFINE {
+				s.unfinished = true
+				return
+			}
 		case '.':
 			if '0' <= s.ch && s.ch <= '9' {
 				tok, lit = s.scanNumber(true)
@@ -705,6 +714,8 @@ scanAgain:
 			}
 		case ',':
 			tok = token.COMMA
+			s.unfinished = true
+			return
 		case ';':
 			tok = token.SEMICOLON
 			lit = ";"
@@ -728,10 +739,16 @@ scanAgain:
 			tok = token.RBRACE
 		case '+':
 			tok = s.switch3(token.ADD, token.ADD_ASSIGN, '+', token.INC)
+			s.unfinished = tok != token.INC
+			return
 		case '-':
 			tok = s.switch3(token.SUB, token.SUB_ASSIGN, '-', token.DEC)
+			s.unfinished = tok != token.DEC
+			return
 		case '*':
 			tok = s.switch2(token.MUL, token.MUL_ASSIGN)
+			s.unfinished = true
+			return
 		case '#':
 			// comment
 			s.noSemi = s.file.Offset(pos) - s.whiteWidth == s.lineOffset // start a beginning of line

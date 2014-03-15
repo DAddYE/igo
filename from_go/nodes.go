@@ -393,8 +393,6 @@ func (p *printer) fieldList(fields *ast.FieldList, isStruct, isIncomplete bool) 
 	if !hasComments && srcIsOneLine {
 		// possibly a one-line struct/interface
 		if len(list) == 0 {
-			// no blank between keyword and {} in this case
-			p.print(lbrace, token.COLON, blank)
 			return
 		} else if isStruct && p.isOneLineFieldList(list) { // for now ignore interfaces
 			// small enough - print on one line
@@ -1485,19 +1483,22 @@ func (p *printer) adjBlock(b *ast.BlockStmt) {
 	}
 
 	switch len(b.List) {
-	case 1:
-		switch s := b.List[0]; s.(type) {
-		case *ast.ReturnStmt, *ast.BranchStmt, *ast.EmptyStmt, *ast.IncDecStmt:
-			p.print(token.COLON, blank)
-			p.stmt(s, true)
-			return
-		}
 	case 0:
-		p.print(token.COLON, blank)
+		p.print(token.COLON)
 		return
+	case 1:
+		if !p.commentNewline {
+			switch s := b.List[0]; s.(type) {
+			case *ast.ReturnStmt, *ast.BranchStmt, *ast.EmptyStmt, *ast.IncDecStmt:
+				p.print(token.COLON, blank)
+				p.stmt(s, true)
+				return
+			}
+		}
+		fallthrough
+	default:
+		p.block(b, 1)
 	}
-
-	p.block(b, 1)
 }
 
 // distanceFrom returns the column difference between from and p.pos (the current

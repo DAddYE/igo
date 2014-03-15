@@ -693,7 +693,10 @@ func (p *parser) parseFieldDecl(scope *ast.Scope) *ast.Field {
 		}
 	}
 
-	p.expectSemi() // call before accessing p.linecomment
+	// Allow multiple types on the same line
+	if p.tok == token.SEMICOLON {
+		p.expectSemi() // call before accessing p.linecomment
+	}
 
 	field := &ast.Field{Doc: doc, Names: idents, Type: typ, Tag: tag, Comment: p.lineComment}
 	p.declare(field, nil, scope, ast.Var, idents...)
@@ -714,30 +717,28 @@ func (p *parser) parseStructType() *ast.StructType {
 	var start, end token.Pos
 	var list []*ast.Field
 
-	if p.tok == token.COLON {
+	switch p.tok {
+	case token.COLON:
 		start = p.expect(token.COLON)
 		if p.tok == token.IDENT || p.tok == token.MUL || p.tok == token.LPAREN {
-			// a field declaration cannot start with a '(' but we accept
-			// it here for more robust parsing and better error messages
-			// (parseFieldDecl will check and complain if necessary)
 			list = append(list, p.parseFieldDecl(scope))
 		} else {
 			p.expect(token.IDENT)
 		}
-	} else {
+	case token.SEMICOLON:
 		p.expectSemi()
 		if p.tok == token.INDENT {
 			start = p.expect(token.INDENT)
-			for p.tok == token.IDENT || p.tok == token.MUL || p.tok == token.LPAREN {
-				// a field declaration cannot start with a '(' but we accept
-				// it here for more robust parsing and better error messages
-				// (parseFieldDecl will check and complain if necessary)
+			for p.tok == token.IDENT {
 				list = append(list, p.parseFieldDecl(scope))
 			}
 			end = p.expect(token.DEDENT)
 		} else {
 			start, end = pos, pos
 		}
+	default:
+		// Allow unbraced types https://gist.github.com/DAddYE/d7d11c0879188dd3fb86
+		start, end = pos, pos
 	}
 
 	return &ast.StructType{
@@ -940,7 +941,11 @@ func (p *parser) parseMethodSpec(scope *ast.Scope) *ast.Field {
 		typ = x
 		p.resolve(typ)
 	}
-	p.expectSemi() // call before accessing p.linecomment
+
+	// We can allow it on the same line
+	if p.tok == token.SEMICOLON {
+		p.expectSemi() // call before accessing p.linecomment
+	}
 
 	spec := &ast.Field{Doc: doc, Names: idents, Type: typ, Comment: p.lineComment}
 	p.declare(spec, nil, scope, ast.Fun, idents...)
@@ -959,14 +964,15 @@ func (p *parser) parseInterfaceType() *ast.InterfaceType {
 	var start, end token.Pos
 	var list []*ast.Field
 
-	if p.tok == token.COLON {
+	switch p.tok {
+	case token.COLON:
 		start = p.expect(token.COLON)
 		if p.tok == token.IDENT {
 			list = append(list, p.parseMethodSpec(scope))
 		} else {
 			p.expect(token.IDENT)
 		}
-	} else {
+	case token.SEMICOLON:
 		p.expectSemi()
 		if p.tok == token.INDENT {
 			start = p.expect(token.INDENT)
@@ -977,6 +983,9 @@ func (p *parser) parseInterfaceType() *ast.InterfaceType {
 		} else {
 			start, end = pos, pos
 		}
+	default:
+		// Allow unbraced types https://gist.github.com/DAddYE/d7d11c0879188dd3fb86
+		start, end = pos, pos
 	}
 
 	return &ast.InterfaceType{
@@ -1219,7 +1228,14 @@ func (p *parser) parseOperand(lhs bool) ast.Expr {
 		defer un(trace(p, "Operand"))
 	}
 
+again:
 	switch p.tok {
+	case token.SEMICOLON:
+		if p.lit == "\n" {
+			p.next()
+			goto again
+		}
+
 	case token.IDENT:
 		x := p.parseIdent()
 		if !lhs {
@@ -1443,7 +1459,6 @@ func (p *parser) checkExpr(x ast.Expr) ast.Expr {
 	case *ast.BinaryExpr:
 	default:
 		// all other nodes are not proper expressions
-		print(fmt.Sprintf("%+#v", x))
 		p.errorExpected(x.Pos(), "expression")
 		x = &ast.BadExpr{From: x.Pos(), To: x.End()}
 	}
@@ -2112,6 +2127,7 @@ func (p *parser) parseSelectStmt() *ast.SelectStmt {
 	}
 
 	pos := p.expect(token.SELECT)
+	p.expectSemi()
 	indent := p.expect(token.INDENT)
 	var list []ast.Stmt
 	for p.tok == token.CASE || p.tok == token.DEFAULT {
@@ -2353,7 +2369,10 @@ func (p *parser) parseValueSpec(doc *ast.CommentGroup, keyword token.Token, iota
 		p.expect(token.ASSIGN)
 		values = p.parseRhsList()
 	}
-	p.expectSemi() // call before accessing p.linecomment
+
+	if p.tok == token.SEMICOLON {
+		p.expectSemi() // call before accessing p.linecomment
+	}
 
 	// Go spec: The scope of a constant or variable identifier declared inside
 	// a function begins at the end of the ConstSpec or VarSpec and ends at

@@ -907,24 +907,12 @@ func (p *printer) printNode(node interface{}) error {
 	case ast.Expr:
 		p.expr(n)
 	case ast.Stmt:
-		// A labeled statement will un-indent to position the label.
-		// Set p.indent to 1 so we don't get indent "underflow".
-		if _, ok := n.(*ast.LabeledStmt); ok {
-			p.indent = 1
-		}
 		p.stmt(n, false)
 	case ast.Decl:
 		p.decl(n)
 	case ast.Spec:
 		p.spec(n, 1, false)
 	case []ast.Stmt:
-		// A labeled statement will un-indent to position the label.
-		// Set p.indent to 1 so we don't get indent "underflow".
-		for _, s := range n {
-			if _, ok := s.(*ast.LabeledStmt); ok {
-				p.indent = 1
-			}
-		}
 		p.stmtList(n, 0, false)
 	case []ast.Decl:
 		p.declList(n)
