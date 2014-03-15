@@ -1067,10 +1067,6 @@ func (p *printer) stmt(stmt ast.Stmt, nextIsRBrace bool) {
 		// nothing to do
 
 	case *ast.LabeledStmt:
-		// a "correcting" unindent immediately following a line break
-		// is applied before the line break if there is no comment
-		// between (see writeWhitespace)
-		p.print(unindent)
 		p.expr(s.Label)
 		p.print(s.Colon, token.COLON, indent)
 		if e, isEmpty := s.Stmt.(*ast.EmptyStmt); isEmpty {
@@ -1534,6 +1530,7 @@ func (p *printer) funcDecl(d *ast.FuncDecl) {
 	p.expr(d.Name)
 	p.signature(d.Type.Params, d.Type.Results)
 	p.adjBlock(d.Body)
+	p.print(unindent)
 }
 
 func (p *printer) decl(decl ast.Decl) {
