@@ -11,11 +11,12 @@ package scanner
 import (
 	"bytes"
 	"fmt"
-	"github.com/daddye/igo/token"
 	"path/filepath"
 	"strconv"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/daddye/igo/token"
 )
 
 // An ErrorHandler may be provided to Scanner.Init. If a syntax error is
@@ -46,8 +47,8 @@ type Scanner struct {
 	unfinished bool // avoid terminator on unfinished expressions (will wait next token before reset)
 
 	// indent state
-	indent indent // stacks of indentation levels
-	whiteWidth int // number of consecutive white spaces at beginning of line
+	indent     indent // stacks of indentation levels
+	whiteWidth int    // number of consecutive white spaces at beginning of line
 
 	// public state - ok to modify
 	ErrorCount int // number of errors encountered
@@ -585,7 +586,6 @@ func (s *Scanner) Scan() (pos token.Pos, tok token.Token, lit string) {
 newLine:
 	blankLine := false
 
-
 	if s.offset == s.lineOffset {
 
 		cl := 0 // current level
@@ -603,7 +603,7 @@ newLine:
 		}
 
 		blankLine = s.ch == '#' || s.ch == '\n'
-		
+
 		// If we are not inside [](){}
 		// Comments '#' or empty lines, should not affect indentation
 		if s.indent.level == 0 && !blankLine && !s.unfinished {
@@ -751,13 +751,17 @@ scanAgain:
 			return
 		case '#':
 			// comment
-			s.noSemi = s.file.Offset(pos) - s.whiteWidth == s.lineOffset // start a beginning of line
+			s.noSemi = s.file.Offset(pos)-s.whiteWidth == s.lineOffset // start a beginning of line
 			lit = s.scanComment()
 			if s.mode&ScanComments == 0 {
 				// skip comment
 				goto scanAgain
 			}
 			tok = token.COMMENT
+			// Should not affect the status of the 'line'
+			if s.unfinished {
+				return
+			}
 		case '/':
 			tok = s.switch2(token.QUO, token.QUO_ASSIGN)
 			s.unfinished = true
@@ -813,6 +817,6 @@ scanAgain:
 			lit = string(ch)
 		}
 	}
-	s.unfinished = false	
+	s.unfinished = false
 	return
 }

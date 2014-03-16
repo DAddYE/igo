@@ -2161,11 +2161,11 @@ func (p *parser) parseForStmt() ast.Stmt {
 			p.next()
 			s1 = s2
 			s2 = nil
-			if p.tok != token.SEMICOLON {
+			if p.tok != token.SEMICOLON && !p.isIndent() {
 				s2, _ = p.parseSimpleStmt(basic)
 			}
 			p.expectSemi()
-			if p.tok != token.INDENT {
+			if !p.isIndent() {
 				s3, _ = p.parseSimpleStmt(basic)
 			}
 		}
@@ -2280,6 +2280,9 @@ func (p *parser) parseStmt() (s ast.Stmt) {
 		s = p.parseSelectStmt()
 	case token.FOR:
 		s = p.parseForStmt()
+	case token.DO:
+		p.next()
+		s = p.parseBlockStmt()
 	case token.SEMICOLON:
 		if p.lit == "\n" {
 			s = p.parseBlockStmt()
