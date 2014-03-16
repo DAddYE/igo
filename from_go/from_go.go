@@ -570,8 +570,7 @@ func (p *printer) intersperseComments(next token.Position, tok token.Token) (wro
 			// if the last comment is a /*-style comment and the next item
 			// follows on the same line but is not a comma or a "closing"
 			// token, drop it
-			if c.Text[1] == '*' && p.lineFor(c.Pos()) == next.Line && tok != token.COMMA &&
-				tok != token.RPAREN && tok != token.RBRACK && tok != token.RBRACE {
+			if c.Text[1] == '*' && p.lineFor(c.Pos()) == next.Line {
 				p.writeByte(' ', 1)
 				continue
 			}
