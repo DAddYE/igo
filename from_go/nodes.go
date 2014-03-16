@@ -54,7 +54,7 @@ func (p *printer) linebreak(line, min int, ws whiteSpace, newSection bool) (prin
 		for ; n > 0; n-- {
 			p.print(newline)
 		}
-		printedBreak = /* testing */ true
+		printedBreak = true
 	}
 	return
 }
@@ -936,6 +936,7 @@ func (p *printer) stmtList(list []ast.Stmt, nindent int, nextIsRBrace bool) {
 // block prints an *ast.BlockStmt; it always spans at least two lines.
 func (p *printer) block(b *ast.BlockStmt, nindent int) {
 	p.stmtList(b.List, nindent, true)
+	p.linebreak(p.lineFor(b.Rbrace), 1, ignore, true)
 }
 
 func isTypeName(x ast.Expr) bool {
@@ -1141,9 +1142,10 @@ func (p *printer) stmt(stmt ast.Stmt, nextIsRBrace bool) {
 		p.controlClause(false, s.Init, s.Cond, nil)
 		p.block(s.Body, 1)
 		if s.Else != nil {
-			p.print(token.ELSE, blank)
+			p.print(token.ELSE)
 			switch s.Else.(type) {
 			case *ast.BlockStmt, *ast.IfStmt:
+				p.print(blank)
 				p.stmt(s.Else, nextIsRBrace)
 			default:
 				p.print(indent, formfeed)
