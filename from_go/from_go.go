@@ -55,6 +55,8 @@ type printer struct {
 	impliedSemi bool         // if set, a linebreak implies a semicolon
 	lastTok     token.Token  // the last token printed (token.ILLEGAL if it's whitespace)
 	wsbuf       []whiteSpace // delayed white space
+	findent     int          // function indentation idx
+	inFunc      bool         // track if we are in a function call
 
 	// Positions
 	// The out position differs from the pos position when the result

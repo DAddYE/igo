@@ -911,6 +911,9 @@ func (p *printer) stmtList(list []ast.Stmt, nindent int, nextIsRBrace bool) {
 	if nindent > 0 {
 		p.print(indent)
 	}
+	if p.inFunc && p.findent == 0 {
+		p.findent = p.indent
+	}
 	multiLine := false
 	i := 0
 	for _, s := range list {
@@ -927,6 +930,9 @@ func (p *printer) stmtList(list []ast.Stmt, nindent int, nextIsRBrace bool) {
 			multiLine = p.isMultiLine(s)
 			i++
 		}
+	}
+	if !p.inFunc {
+		p.findent = 0
 	}
 	if nindent > 0 {
 		p.print(unindent)
@@ -1051,6 +1057,18 @@ func (p *printer) indentList(list []ast.Expr) bool {
 	return false
 }
 
+func (p *printer) alignFuncIndent(){
+	p.flush(p.pos, p.lastTok)
+	i := p.indent
+	print(i, ":", p.findent, "\n")
+	for ; i < p.findent; i++ {
+		p.print(indent)
+	}
+	for ; i > p.findent; i-- {
+		p.print(unindent)
+	}
+}
+
 func (p *printer) stmt(stmt ast.Stmt, nextIsRBrace bool) {
 	p.print(stmt.Pos())
 
@@ -1065,6 +1083,7 @@ func (p *printer) stmt(stmt ast.Stmt, nextIsRBrace bool) {
 		// nothing to do
 
 	case *ast.LabeledStmt:
+		p.alignFuncIndent()
 		p.expr(s.Label)
 		p.print(s.Colon, token.COLON, indent)
 		if e, isEmpty := s.Stmt.(*ast.EmptyStmt); isEmpty {
@@ -1531,7 +1550,9 @@ func (p *printer) funcDecl(d *ast.FuncDecl) {
 	}
 	p.expr(d.Name)
 	p.signature(d.Type.Params, d.Type.Results)
+	p.inFunc = true
 	p.adjBlock(d.Body)
+	p.inFunc = false
 	p.print(unindent)
 }
 
