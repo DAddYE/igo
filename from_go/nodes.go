@@ -10,7 +10,7 @@ package from_go
 
 import (
 	"bytes"
-	iToken "github.com/daddye/igo/token"
+	iToken "github.com/DAddYE/igo/token"
 	"go/ast"
 	"go/token"
 	"unicode/utf8"

@@ -16,7 +16,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/daddye/igo/token"
+	"github.com/DAddYE/igo/token"
 )
 
 // An ErrorHandler may be provided to Scanner.Init. If a syntax error is

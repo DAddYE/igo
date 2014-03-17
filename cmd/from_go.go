@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"path/filepath"
 
-	printer "github.com/daddye/igo/from_go"
+	printer "github.com/DAddYE/igo/from_go"
 
 	"go/ast"
 	"go/parser"

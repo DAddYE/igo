@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"path/filepath"
 
-	printer "github.com/daddye/igo/to_go"
+	printer "github.com/DAddYE/igo/to_go"
 
-	"github.com/daddye/igo/ast"
-	"github.com/daddye/igo/parser"
-	"github.com/daddye/igo/scanner"
-	"github.com/daddye/igo/token"
+	"github.com/DAddYE/igo/ast"
+	"github.com/DAddYE/igo/parser"
+	"github.com/DAddYE/igo/scanner"
+	"github.com/DAddYE/igo/token"
 
 	"io"
 	"io/ioutil"

@@ -7,7 +7,7 @@ package ast
 import (
 	"bytes"
 	"fmt"
-	"github.com/daddye/igo/token"
+	"github.com/DAddYE/igo/token"
 	"sort"
 )
 

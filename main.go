@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/daddye/igo/cmd"
+	"github.com/DAddYE/igo/cmd"
 )
 
 type Cmd int

@@ -7,8 +7,8 @@ package to_go
 
 import (
 	"fmt"
-	"github.com/daddye/igo/ast"
-	"github.com/daddye/igo/token"
+	"github.com/DAddYE/igo/ast"
+	"github.com/DAddYE/igo/token"
 	"io"
 	"os"
 	"strconv"
@@ -133,7 +133,7 @@ func (p *printer) internalError(msg ...interface{}) {
 	if debug {
 		fmt.Print(p.pos.String() + ": ")
 		fmt.Println(msg...)
-		panic("github.com/daddye/igo/to_go")
+		panic("github.com/DAddYE/igo/to_go")
 	}
 }
 
@@ -833,7 +833,7 @@ func (p *printer) print(args ...interface{}) {
 
 		default:
 			fmt.Fprintf(os.Stderr, "print: unsupported argument %v (%T)\n", arg, arg)
-			panic("github.com/daddye/igo/to_go printer type")
+			panic("github.com/DAddYE/igo/to_go printer type")
 		}
 		// data != ""
 
@@ -991,7 +991,7 @@ func (p *printer) printNode(node interface{}) error {
 	return nil
 
 unsupported:
-	return fmt.Errorf("github.com/daddye/igo/printer: unsupported node type %T", node)
+	return fmt.Errorf("github.com/DAddYE/igo/printer: unsupported node type %T", node)
 }
 
 // ----------------------------------------------------------------------------

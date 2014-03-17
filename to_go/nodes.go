@@ -10,8 +10,8 @@ package to_go
 
 import (
 	"bytes"
-	"github.com/daddye/igo/ast"
-	"github.com/daddye/igo/token"
+	"github.com/DAddYE/igo/ast"
+	"github.com/DAddYE/igo/token"
 	"unicode/utf8"
 )
 

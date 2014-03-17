@@ -11,9 +11,9 @@ package parser
 
 import (
 	"fmt"
-	"github.com/daddye/igo/ast"
-	"github.com/daddye/igo/scanner"
-	"github.com/daddye/igo/token"
+	"github.com/DAddYE/igo/ast"
+	"github.com/DAddYE/igo/scanner"
+	"github.com/DAddYE/igo/token"
 	"strconv"
 	"strings"
 	"unicode"

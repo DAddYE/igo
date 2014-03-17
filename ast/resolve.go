@@ -8,8 +8,8 @@ package ast
 
 import (
 	"fmt"
-	"github.com/daddye/igo/scanner"
-	"github.com/daddye/igo/token"
+	"github.com/DAddYE/igo/scanner"
+	"github.com/DAddYE/igo/token"
 	"strconv"
 )
 

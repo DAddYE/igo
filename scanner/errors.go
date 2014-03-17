@@ -6,7 +6,7 @@ package scanner
 
 import (
 	"fmt"
-	"github.com/daddye/igo/token"
+	"github.com/DAddYE/igo/token"
 	"io"
 	"sort"
 )

@@ -5,7 +5,7 @@
 package ast
 
 import (
-	"github.com/daddye/igo/token"
+	"github.com/DAddYE/igo/token"
 	"sort"
 	"strconv"
 )

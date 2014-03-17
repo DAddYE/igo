@@ -9,8 +9,8 @@ package parser
 import (
 	"bytes"
 	"errors"
-	"github.com/daddye/igo/ast"
-	"github.com/daddye/igo/token"
+	"github.com/DAddYE/igo/ast"
+	"github.com/DAddYE/igo/token"
 	"io"
 	"io/ioutil"
 	"os"

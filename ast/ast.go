@@ -10,7 +10,7 @@
 package ast
 
 import (
-	"github.com/daddye/igo/token"
+	"github.com/DAddYE/igo/token"
 	"strings"
 	"unicode"
 	"unicode/utf8"
