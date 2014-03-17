@@ -1060,7 +1060,6 @@ func (p *printer) indentList(list []ast.Expr) bool {
 func (p *printer) alignFuncIndent(){
 	p.flush(p.pos, p.lastTok)
 	i := p.indent
-	print(i, ":", p.findent, "\n")
 	for ; i < p.findent; i++ {
 		p.print(indent)
 	}

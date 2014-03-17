@@ -284,7 +284,7 @@ func (p *printer) writeCommentPrefix(pos, next token.Position, prev, comment *as
 		return
 	}
 
-	if pos.Line == p.last.Line && (prev == nil || prev.Text[1] != '/') {
+	if pos.Line == p.last.Line && prev == nil {
 		// comment on the same line as last item:
 		// separate with at least one separator
 		hasSep := false
@@ -382,7 +382,7 @@ func (p *printer) writeCommentPrefix(pos, next token.Position, prev, comment *as
 
 		// make sure there is at least one line break
 		// if the previous comment was a line comment
-		if n == 0 && prev != nil && prev.Text[1] == '/' {
+		if n == 0 && prev != nil {
 			n = 1
 		}
 
@@ -410,7 +410,7 @@ func isBlank(s string) bool {
 // commonPrefix returns the common prefix of a and b.
 func commonPrefix(a, b string) string {
 	i := 0
-	for i < len(a) && i < len(b) && a[i] == b[i] && (a[i] <= ' ' || a[i] == '*') {
+	for i < len(a) && i < len(b) && a[i] == b[i] && (a[i] <= ' ') {
 		i++
 	}
 	return a[0:i]
@@ -421,139 +421,7 @@ func trimRight(s string) string {
 	return strings.TrimRightFunc(s, unicode.IsSpace)
 }
 
-// stripCommonPrefix removes a common prefix from /*-style comment lines (unless no
-// comment line is indented, all but the first line have some form of space prefix).
-// The prefix is computed using heuristics such that is likely that the comment
-// contents are nicely laid out after re-printing each line using the printer's
-// current indentation.
-//
-func stripCommonPrefix(lines []string) {
-	if len(lines) <= 1 {
-		return // at most one line - nothing to do
-	}
-	// len(lines) > 1
-
-	// The heuristic in this function tries to handle a few
-	// common patterns of /*-style comments: Comments where
-	// the opening /* and closing */ are aligned and the
-	// rest of the comment text is aligned and indented with
-	// blanks or tabs, cases with a vertical "line of stars"
-	// on the left, and cases where the closing */ is on the
-	// same line as the last comment text.
-
-	// Compute maximum common white prefix of all but the first,
-	// last, and blank lines, and replace blank lines with empty
-	// lines (the first line starts with /* and has no prefix).
-	// In case of two-line comments, consider the last line for
-	// the prefix computation since otherwise the prefix would
-	// be empty.
-	//
-	// Note that the first and last line are never empty (they
-	// contain the opening /* and closing */ respectively) and
-	// thus they can be ignored by the blank line check.
-	var prefix string
-	if len(lines) > 2 {
-		first := true
-		for i, line := range lines[1 : len(lines)-1] {
-			switch {
-			case isBlank(line):
-				lines[1+i] = "" // range starts with lines[1]
-			case first:
-				prefix = commonPrefix(line, line)
-				first = false
-			default:
-				prefix = commonPrefix(prefix, line)
-			}
-		}
-	} else { // len(lines) == 2, lines cannot be blank (contain /* and */)
-		line := lines[1]
-		prefix = commonPrefix(line, line)
-	}
-
-	/*
-	 * Check for vertical "line of stars" and correct prefix accordingly.
-	 */
-	lineOfStars := false
-	if i := strings.Index(prefix, "*"); i >= 0 {
-		// Line of stars present.
-		if i > 0 && prefix[i-1] == ' ' {
-			i-- // remove trailing blank from prefix so stars remain aligned
-		}
-		prefix = prefix[0:i]
-		lineOfStars = true
-	} else {
-		// No line of stars present.
-		// Determine the white space on the first line after the /*
-		// and before the beginning of the comment text, assume two
-		// blanks instead of the /* unless the first character after
-		// the /* is a tab. If the first comment line is empty but
-		// for the opening /*, assume up to 3 blanks or a tab. This
-		// whitespace may be found as suffix in the common prefix.
-		first := lines[0]
-		if isBlank(first[2:]) {
-			// no comment text on the first line:
-			// reduce prefix by up to 3 blanks or a tab
-			// if present - this keeps comment text indented
-			// relative to the /* and */'s if it was indented
-			// in the first place
-			i := len(prefix)
-			for n := 0; n < 3 && i > 0 && prefix[i-1] == ' '; n++ {
-				i--
-			}
-			if i == len(prefix) && i > 0 && prefix[i-1] == '\t' {
-				i--
-			}
-			prefix = prefix[0:i]
-		} else {
-			// comment text on the first line
-			suffix := make([]byte, len(first))
-			n := 2 // start after opening /*
-			for n < len(first) && first[n] <= ' ' {
-				suffix[n] = first[n]
-				n++
-			}
-			if n > 2 && suffix[2] == '\t' {
-				// assume the '\t' compensates for the /*
-				suffix = suffix[2:n]
-			} else {
-				// otherwise assume two blanks
-				suffix[0], suffix[1] = ' ', ' '
-				suffix = suffix[0:n]
-			}
-			// Shorten the computed common prefix by the length of
-			// suffix, if it is found as suffix of the prefix.
-			prefix = strings.TrimSuffix(prefix, string(suffix))
-		}
-	}
-
-	// Handle last line: If it only contains a closing */, align it
-	// with the opening /*, otherwise align the text with the other
-	// lines.
-	last := lines[len(lines)-1]
-	closing := "*/"
-	i := strings.Index(last, closing) // i >= 0 (closing is always present)
-	if isBlank(last[0:i]) {
-		// last line only contains closing */
-		if lineOfStars {
-			closing = " */" // add blank to align final star
-		}
-		lines[len(lines)-1] = prefix + closing
-	} else {
-		// last line contains more comment text - assume
-		// it is aligned like the other lines and include
-		// in prefix computation
-		prefix = commonPrefix(prefix, last)
-	}
-
-	// Remove the common prefix from all but the first and empty lines.
-	for i, line := range lines {
-		if i > 0 && line != "" {
-			lines[i] = line[len(prefix):]
-		}
-	}
-}
-
-func (p *printer) writeComment(comment *ast.Comment) {
+func (p *printer) writeComment(comment *ast.Comment, prefix string) {
 	text := comment.Text
 	pos := p.posFor(comment.Pos())
 
@@ -578,9 +446,14 @@ func (p *printer) writeComment(comment *ast.Comment) {
 			}
 		}
 	}
-
+	
 	// shortcut common case of //-style comments
-	p.writeString(pos, "//" + trimRight(text[1:]), true)
+	var suffix string
+	if prefix != "//" {
+		suffix = " */ "
+	}
+
+	p.writeString(pos, prefix + trimRight(text[1:]) + suffix, true)
 }
 
 // writeCommentSuffix writes a line break after a comment if indicated
@@ -633,8 +506,12 @@ func (p *printer) intersperseComments(next token.Position, tok token.Token) (wro
 	var last *ast.Comment
 	for p.commentBefore(next) {
 		for _, c := range p.comment.List {
-			p.writeCommentPrefix(p.posFor(c.Pos()), next, last, c, tok)
-			p.writeComment(c)
+			if tok == token.LBRACE {
+				p.writeComment(c, " /*")
+			} else {
+				p.writeCommentPrefix(p.posFor(c.Pos()), next, last, c, tok)
+				p.writeComment(c, "//")
+			}
 			last = c
 		}
 		p.nextComment()
@@ -644,7 +521,6 @@ func (p *printer) intersperseComments(next token.Position, tok token.Token) (wro
 		// ensure that there is a line break after a //-style comment,
 		// before a closing '}' unless explicitly disabled, or at eof
 		needsLinebreak :=
-			last.Text[0] == '#' ||
 				tok == token.RBRACE && p.mode&noExtraLinebreak == 0 ||
 				tok == token.EOF
 		return p.writeCommentSuffix(needsLinebreak)
