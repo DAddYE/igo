@@ -54,6 +54,7 @@ type printer struct {
 	impliedSemi bool         // if set, a linebreak implies a semicolon
 	lastTok     token.Token  // the last token printed (token.ILLEGAL if it's whitespace)
 	wsbuf       []whiteSpace // delayed white space
+	noBrace     bool         // in certains scenarios (read case/default) we don't want a {} closure.
 
 	// Positions
 	// The out position differs from the pos position when the result
