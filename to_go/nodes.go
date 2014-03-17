@@ -917,12 +917,16 @@ func (p *printer) stmtList(list []ast.Stmt, nindent int, nextIsRBrace bool) {
 
 // block prints an *ast.BlockStmt; it always spans at least two lines.
 func (p *printer) block(b *ast.BlockStmt, nindent int) {
-	if !p.noBrace {
+	noBrace := p.noBrace
+	if noBrace {
+		nindent = 0
+		p.noBrace = false
+	} else {
 		p.print(b.Opening, token.LBRACE)
 	}
 	p.stmtList(b.List, nindent, true)
 	p.linebreak(p.lineFor(b.Closing), 1, ignore, true)
-	if !p.noBrace {
+	if !noBrace {
 		p.print(b.Closing, token.RBRACE)
 	}
 }
@@ -1155,7 +1159,6 @@ func (p *printer) stmt(stmt ast.Stmt, nextIsRBrace bool) {
 		p.print(s.Colon, token.COLON)
 		p.noBrace = true
 		p.stmtList(s.Body, 1, nextIsRBrace)
-		p.noBrace = false
 
 	case *ast.SwitchStmt:
 		p.print(token.SWITCH)
