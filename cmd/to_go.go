@@ -44,7 +44,7 @@ func igoInitPrinterMode() {
 }
 
 func igoProcessFile(filename string, in io.Reader, out io.Writer) error {
-	dest := strings.TrimSuffix(filename, ".igo") + ".igo.go"
+	dest := strings.TrimSuffix(filename, ".igo") + ".go"
 
 	f, err := os.Open(filename)
 	if err != nil {

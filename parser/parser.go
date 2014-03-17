@@ -413,6 +413,8 @@ func (p *parser) expectSemi() {
 		case p.ptok == token.SEMICOLON:
 			// semicolon doesn't need to be consecutive ';;'
 			// nothing. Already consumed.
+		case p.ptok == token.COMMENT:
+			// Comment has not semi after
 		case p.ptok == token.DEDENT:
 			// dedent is semi
 		default:
@@ -2457,8 +2459,8 @@ func (p *parser) parseReceiver(typ ast.Expr, scope *ast.Scope) *ast.Field {
 	field := &ast.Field{Names: []*ast.Ident{ident}, Type: typ}
 
 	p.declare(field, nil, scope, ast.Var, ident)
-	if typ.(*ast.Ident).Obj == nil {
-		p.resolve(typ)
+	if t, ok := typ.(*ast.Ident); ok {
+		p.resolve(t)
 	}
 
 	return field
@@ -2481,14 +2483,12 @@ func (p *parser) parseFuncDecl() *ast.FuncDecl {
 
 	// *T.ident
 	if p.tok == token.MUL {
-		s := p.parsePointerType().X
-		switch t := s.(type) {
-		case *ast.SelectorExpr:
-			if typ := t.X.(*ast.Ident); typ != nil {
-				recv = p.parseReceiver(typ, scope)
-			}
-			ident = t.Sel
-		}
+		star := p.expect(token.MUL)
+		typ  := p.parseIdent()
+		expr := &ast.StarExpr{Star: star, X: typ}
+		recv  = p.parseReceiver(expr, scope)
+		p.expect(token.PERIOD)
+		ident = p.parseIdent()
 	} else {
 		ident = p.parseIdent()
 		// T.ident

@@ -602,7 +602,7 @@ newLine:
 			s.next()
 		}
 
-		blankLine = s.ch == '#' || s.ch == '\n'
+		blankLine = s.ch == '\n'
 
 		// If we are not inside [](){}
 		// Comments '#' or empty lines, should not affect indentation
