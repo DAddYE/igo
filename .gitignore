@@ -1,3 +1,4 @@
 *_test.*
+*.go
 testdata
 igo
