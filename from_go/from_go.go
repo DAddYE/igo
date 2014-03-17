@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	maxNewlines = 1     // max. number of newlines between source text
+	maxNewlines = 2     // max. number of newlines between source text
 	debug       = false // enable for debugging
 	infinity    = 1 << 30
 )
