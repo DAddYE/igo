@@ -817,7 +817,7 @@ func (p *printer) expr1(expr ast.Expr, prec1, depth int) {
 					args := x.Args[:len(x.Args)-1]
 					p.exprList(x.Lparen, args, depth, commaTerm, x.Rparen)
 					p.print(x.Rparen, token.RPAREN)
-					p.print(blank, iToken.DO, blank)
+					p.print(blank, iToken.DO)
 					p.signature(fn.Type.Params, fn.Type.Results)
 					p.adjBlock(fn.Body)
 				} else {
