@@ -309,11 +309,6 @@ func (p *parser) next() {
 	prev := p.pos
 	p.next0()
 
-	// Only DoLiteral can touch previous calls
-	if !p.inDo {
-		p.call = nil
-	}
-
 	if p.tok == token.COMMENT {
 		var comment *ast.CommentGroup
 		var endline int
@@ -1173,31 +1168,6 @@ func (p *parser) parseBlockStmt() *ast.BlockStmt {
 // ----------------------------------------------------------------------------
 // Expressions
 
-func (p *parser) parseDoLit() {
-	if p.trace {
-		defer un(trace(p, "DoLit"))
-	}
-
-	p.inDo = true
-	pos := p.expect(token.DO)
-
-	if p.call == nil {
-		p.errorExpected(pos, "function call")
-	} else {
-		scope := ast.NewScope(p.topScope) // function scope
-		params, results := p.parseSignature(scope)
-
-		typ := &ast.FuncType{Func: pos, Params: params, Results: results}
-
-		p.exprLev++
-		body := p.parseBody(scope)
-		p.exprLev--
-
-		p.inDo = false
-		p.call.Args = append(p.call.Args, &ast.FuncLit{Type: typ, Body: body})
-	}
-}
-
 func (p *parser) parseFuncTypeOrLit() ast.Expr {
 	if p.trace {
 		defer un(trace(p, "FuncTypeOrLit"))
@@ -1355,6 +1325,21 @@ func (p *parser) parseCallOrConversion(fun ast.Expr) *ast.CallExpr {
 	}
 	p.exprLev--
 	rparen := p.expectClosing(token.RPAREN, "argument list")
+
+	if p.tok == token.DO {
+		pos := p.expect(token.DO)
+
+		scope := ast.NewScope(p.topScope) // function scope
+		params, results := p.parseSignature(scope)
+
+		typ := &ast.FuncType{Func: pos, Params: params, Results: results}
+
+		p.exprLev++
+		body := p.parseBody(scope)
+		p.exprLev--
+
+		list = append(p.call.Args, &ast.FuncLit{Type: typ, Body: body})
+	}
 
 	p.call = &ast.CallExpr{Fun: fun, Lparen: lparen, Args: list, Ellipsis: ellipsis, Rparen: rparen}
 
@@ -1569,8 +1554,6 @@ L:
 				p.resolve(x)
 			}
 			x = p.parseCallOrConversion(p.checkExprOrType(x))
-		case token.DO:
-			p.parseDoLit()
 		case token.LBRACE:
 			if isLiteralType(x) && (p.exprLev >= 0 || !isTypeName(x)) {
 				if lhs {
