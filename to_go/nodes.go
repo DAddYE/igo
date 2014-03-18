@@ -1071,6 +1071,7 @@ func (p *printer) stmt(stmt ast.Stmt, nextIsRBrace bool) {
 		} else {
 			p.linebreak(p.lineFor(s.Stmt.Pos()), 1, ignore, true)
 		}
+		p.noBrace = true
 		p.stmt(s.Stmt, nextIsRBrace)
 
 	case *ast.ExprStmt:
