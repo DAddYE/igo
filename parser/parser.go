@@ -1338,12 +1338,10 @@ func (p *parser) parseCallOrConversion(fun ast.Expr) *ast.CallExpr {
 		body := p.parseBody(scope)
 		p.exprLev--
 
-		list = append(p.call.Args, &ast.FuncLit{Type: typ, Body: body})
+		list = append(list, &ast.FuncLit{Type: typ, Body: body})
 	}
 
-	p.call = &ast.CallExpr{Fun: fun, Lparen: lparen, Args: list, Ellipsis: ellipsis, Rparen: rparen}
-
-	return p.call
+	return &ast.CallExpr{Fun: fun, Lparen: lparen, Args: list, Ellipsis: ellipsis, Rparen: rparen}
 }
 
 func (p *parser) parseElement(keyOk bool) ast.Expr {
