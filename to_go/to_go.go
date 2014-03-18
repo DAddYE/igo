@@ -448,10 +448,14 @@ func (p *printer) writeComment(comment *ast.Comment, prefix string) {
 		}
 	}
 	
+	t := trimRight(text[1:])
+
 	// shortcut common case of //-style comments
 	var suffix string
 	if prefix != "//" {
 		suffix = " */ "
+		// Since the */ thing is allowed in # comments, we should escape it.
+		t = strings.Replace(t, "*/", `*\/`, -1)
 	}
 
 	p.writeString(pos, prefix + trimRight(text[1:]) + suffix, true)
@@ -507,7 +511,8 @@ func (p *printer) intersperseComments(next token.Position, tok token.Token) (wro
 	var last *ast.Comment
 	for p.commentBefore(next) {
 		for _, c := range p.comment.List {
-			if tok == token.LBRACE {
+			// if the comment is a the next item follows on the same line
+			if p.lineFor(c.Pos()) == next.Line {
 				p.writeComment(c, " /*")
 			} else {
 				p.writeCommentPrefix(p.posFor(c.Pos()), next, last, c, tok)
