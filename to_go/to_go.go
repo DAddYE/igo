@@ -455,10 +455,11 @@ func (p *printer) writeComment(comment *ast.Comment, prefix string) {
 	if prefix != "//" {
 		suffix = " */ "
 		// Since the */ thing is allowed in # comments, we should escape it.
-		t = strings.Replace(t, "*/", `*\/`, -1)
+		t = strings.Replace(t, "*/", `*\/`, -1) + " "
+		prefix = " " + prefix
 	}
 
-	p.writeString(pos, prefix + trimRight(text[1:]) + suffix, true)
+	p.writeString(pos, prefix + t + suffix, true)
 }
 
 // writeCommentSuffix writes a line break after a comment if indicated
@@ -511,9 +512,8 @@ func (p *printer) intersperseComments(next token.Position, tok token.Token) (wro
 	var last *ast.Comment
 	for p.commentBefore(next) {
 		for _, c := range p.comment.List {
-			// if the comment is a the next item follows on the same line
-			if p.lineFor(c.Pos()) == next.Line {
-				p.writeComment(c, " /*")
+			if tok == token.LPAREN || tok == token.LBRACE {
+				p.writeComment(c, "/*")
 			} else {
 				p.writeCommentPrefix(p.posFor(c.Pos()), next, last, c, tok)
 				p.writeComment(c, "//")
