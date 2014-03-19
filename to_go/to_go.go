@@ -525,9 +525,10 @@ func (p *printer) intersperseComments(next token.Position, tok token.Token) (wro
 
 	if last != nil {
 		// ensure that there is a line break after a //-style comment,
-		// before a closing '}' unless explicitly disabled, or at eof
+		// before a closing '}' ')' unless explicitly disabled, or at eof
 		needsLinebreak :=
 				tok == token.RBRACE && p.mode&noExtraLinebreak == 0 ||
+				tok == token.RPAREN && p.mode&noExtraLinebreak == 0 ||
 				tok == token.EOF
 		return p.writeCommentSuffix(needsLinebreak)
 	}
