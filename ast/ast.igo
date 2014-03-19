@@ -1,0 +1,1085 @@
+# Copyright 2009 The Go Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+# --
+# Modified by DAddYE (Davide D'Agostino) - 2014
+
+# Package ast declares the types used to represent syntax trees for Go
+# packages.
+#
+package ast
+
+import
+	"github.com/DAddYE/igo/token"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+# ----------------------------------------------------------------------------
+# Interfaces
+#
+# There are 3 main classes of nodes: Expressions and type nodes,
+# statement nodes, and declaration nodes. The node names usually
+# match the corresponding Go spec production names to which they
+# correspond. The node fields correspond to the individual parts
+# of the respective productions.
+#
+# All nodes contain position information marking the beginning of
+# the corresponding source text segment; it is accessible via the
+# Pos accessor method. Nodes may contain additional position info
+# for language constructs where comments may be found between parts
+# of the construct (typically any larger, parenthesized subpart).
+# That position information is needed to properly position comments
+# when printing the construct.
+
+# All node types implement the Node interface.
+type Node interface
+	Pos() token.Pos # position of first character belonging to the node
+	End() token.Pos # position of first character immediately after the node
+
+# All expression nodes implement the Expr interface.
+type Expr interface
+	Node
+	exprNode()
+
+# All statement nodes implement the Stmt interface.
+type Stmt interface
+	Node
+	stmtNode()
+
+# All declaration nodes implement the Decl interface.
+type Decl interface
+	Node
+	declNode()
+
+# ----------------------------------------------------------------------------
+# Comments
+
+# A Comment node represents a single //-style or /*-style comment.
+type Comment struct
+	Slash token.Pos # position of "/" starting the comment
+	Text  string    # comment text (excluding '\n' for //-style comments)
+
+func *Comment.Pos() token.Pos
+	return self.Slash
+
+
+func *Comment.End() token.Pos
+	return token.Pos(int(self.Slash) + len(self.Text))
+
+# A CommentGroup represents a sequence of comments
+# with no other tokens and no empty lines between.
+#
+type CommentGroup struct
+	List []*Comment # len(List) > 0
+
+func *CommentGroup.Pos() token.Pos
+	return self.List[0].Pos()
+
+func *CommentGroup.End() token.Pos
+	return self.List[len(self.List)-1].End()
+
+func isWhitespace(ch byte) bool
+	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
+
+func stripTrailingWhitespace(s string) string
+	i := len(s)
+	for i > 0 && isWhitespace(s[i-1])
+		i--
+
+	return s[0:i]
+
+# Text returns the text of the comment.
+# Comment markers (//, /*, and */), the first space of a line comment, and
+# leading and trailing empty lines are removed. Multiple empty lines are
+# reduced to one, and trailing space on lines is trimmed. Unless the result
+# is empty, it is newline-terminated.
+#
+func *CommentGroup.Text() string
+	if self == nil
+		return ""
+
+	comments := make([]string, len(self.List))
+	for i, c := range self.List
+		comments[i] = string(c.Text)
+
+	lines := make([]string, 0, 10) # most comments are less than 10 lines
+	for _, c := range comments     # Remove comment markers.
+		# The parser has given us exactly the comment text.
+		switch c[1]
+			case '/':
+				#-style comment (no newline at the end)
+				c = c[2:]
+				# strip first space - required for Example tests
+				if len(c) > 0 && c[0] == ' '
+					c = c[1:]
+
+			case '*':
+				#-style comment
+				c = c[2 : len(c)-2]
+
+				# Split on newlines.
+
+		cl := strings.Split(c, "\n")
+
+		# Walk lines, stripping trailing white space and adding to list.
+		for _, l := range cl
+			lines = append(lines, stripTrailingWhitespace(l))
+
+			# Remove leading blank lines; convert runs of
+			# interior blank lines to a single blank line.
+
+	n := 0
+	for _, line := range lines
+		if line != "" || n > 0 && lines[n-1] != ""
+			lines[n] = line
+			n++
+
+	lines = lines[0:n]
+
+	# Add final "" entry to get trailing newline from Join.
+	if n > 0 && lines[n-1] != ""
+		lines = append(lines, "")
+
+	return strings.Join(lines, "\n")
+
+# ----------------------------------------------------------------------------
+# Expressions and types
+
+# A Field represents a Field declaration list in a struct type,
+# a method list in an interface type, or a parameter/result declaration
+# in a signature.
+#
+type Field struct
+	Doc     *CommentGroup # associated documentation; or nil
+	Names   []*Ident      # field/method/parameter names; or nil if anonymous field
+	Type    Expr          # field/method/parameter type
+	Tag     *BasicLit     # field tag; or nil
+	Comment *CommentGroup # line comments; or nil
+
+func *Field.Pos() token.Pos
+	if len(self.Names) > 0
+		return self.Names[0].Pos()
+
+	return self.Type.Pos()
+
+func *Field.End() token.Pos
+	if self.Tag != nil
+		return self.Tag.End()
+
+	return self.Type.End()
+
+# A FieldList represents a list of Fields, enclosed by parentheses or braces.
+type FieldList struct
+	Opening token.Pos # position of opening parenthesis/brace, if any
+	List    []*Field  # field list; or nil
+	Closing token.Pos # position of closing parenthesis/brace, if any
+
+func *FieldList.Pos() token.Pos
+	if self.Opening.IsValid()
+		return self.Opening
+	
+  # the list should not be empty in this case;
+	# be conservative and guard against bad ASTs
+	if len(self.List) > 0
+		return self.List[0].Pos()
+
+	return token.NoPos
+
+func *FieldList.End() token.Pos
+	if self.Closing.IsValid()
+		return self.Closing + 1
+
+	# the list should not be empty in this case;
+	# be conservative and guard against bad ASTs
+	if n := len(self.List); n > 0
+		return self.List[n-1].End()
+
+	return token.NoPos
+
+# NumFields returns the number of (named and anonymous fields) in a FieldList.
+func *FieldList.NumFields() int
+	n := 0
+	if self != nil
+		for _, g := range self.List
+			m := len(g.Names)
+			if m == 0: m = 1 # anonymous field
+			n += m
+
+	return n
+
+# An expression is represented by a tree consisting of one
+# or more of the following concrete expression nodes.
+#
+type
+  # A BadExpr node is a placeholder for expressions containing
+	# syntax errors for which no correct expression nodes can be
+	# created.
+	#
+	BadExpr struct
+		From, To token.Pos # position range of bad expression
+
+	# An Ident node represents an identifier.
+	Ident struct
+		NamePos token.Pos # identifier position
+		Name    string    # identifier name
+		Obj     *Object   # denoted object; or nil
+
+  # An Ellipsis node stands for the "..." type in a
+	# parameter list or the "..." length in an array type.
+	#
+	Ellipsis struct
+		Ellipsis token.Pos # position of "..."
+		Elt      Expr      # ellipsis element type (parameter lists only); or nil
+
+	# A BasicLit node represents a literal of basic type.
+	BasicLit struct
+		ValuePos token.Pos   # literal position
+		Kind     token.Token # token.INT, token.FLOAT, token.IMAG, token.CHAR, or token.STRING
+		Value    string      # literal string; e.g. 42, 0x7f, 3.14, 1e-9, 2.4i, 'a', '\x7f', "foo" or `\m\n\o`
+
+	# A FuncLit node represents a function literal.
+	FuncLit struct
+		Type *FuncType  # function type
+		Body *BlockStmt # function body
+
+	# A CompositeLit node represents a composite literal.
+	CompositeLit struct
+		Type   Expr      # literal type; or nil
+		Lbrace token.Pos # position of "{"
+		Elts   []Expr    # list of composite elements; or nil
+		Rbrace token.Pos # position of "}"
+
+	# A ParenExpr node represents a parenthesized expression.
+	ParenExpr struct
+		Lparen token.Pos # position of "("
+		X      Expr      # parenthesized expression
+		Rparen token.Pos # position of ")"
+
+	# A SelectorExpr node represents an expression followed by a selector.
+	SelectorExpr struct
+		X   Expr   # expression
+		Sel *Ident # field selector
+
+	# An IndexExpr node represents an expression followed by an index.
+	IndexExpr struct
+		X      Expr      # expression
+		Lbrack token.Pos # position of "["
+		Index  Expr      # index expression
+		Rbrack token.Pos # position of "]"
+
+	# An SliceExpr node represents an expression followed by slice indices.
+	SliceExpr struct
+		X      Expr      # expression
+		Lbrack token.Pos # position of "["
+		Low    Expr      # begin of slice range; or nil
+		High   Expr      # end of slice range; or nil
+		Rbrack token.Pos # position of "]"
+
+	# A TypeAssertExpr node represents an expression followed by a
+	# type assertion.
+	#
+	TypeAssertExpr struct
+		X    Expr # expression
+		Type Expr # asserted type; nil means type switch X.(type)
+
+	# A CallExpr node represents an expression followed by an argument list.
+	CallExpr struct
+		Fun      Expr      # function expression
+		Lparen   token.Pos # position of "("
+		Args     []Expr    # function arguments; or nil
+		Ellipsis token.Pos # position of "...", if any
+		Rparen   token.Pos # position of ")"
+
+	# A StarExpr node represents an expression of the form "*" Expression.
+	# Semantically it could be a unary "*" expression, or a pointer type.
+	#
+	StarExpr struct
+		Star token.Pos # position of "*"
+		X    Expr      # operand
+
+	# A UnaryExpr node represents a unary expression.
+	# Unary "*" expressions are represented via StarExpr nodes.
+	#
+	UnaryExpr struct
+		OpPos token.Pos   # position of Op
+		Op    token.Token # operator
+		X     Expr        # operand
+
+	# A BinaryExpr node represents a binary expression.
+	BinaryExpr struct
+		X     Expr        # left operand
+		OpPos token.Pos   # position of Op
+		Op    token.Token # operator
+		Y     Expr        # right operand
+
+	# A KeyValueExpr node represents (key : value) pairs
+	# in composite literals.
+	#
+	KeyValueExpr struct
+		Key   Expr
+		Colon token.Pos # position of ":"
+		Value Expr
+		# The direction of a channel type is indicated by one
+		# of the following constants.
+		#
+
+type ChanDir int
+
+const
+	SEND ChanDir = 1 << iota
+	RECV
+
+# A type is represented by a tree consisting of one
+# or more of the following type-specific expression
+# nodes.
+#
+type # An ArrayType node represents an array or slice type.
+	ArrayType struct
+		Lbrack token.Pos # position of "["
+		Len    Expr      # Ellipsis node for [...]T array types, nil for slice types
+		Elt    Expr      # element type
+
+	# A StructType node represents a struct type.
+	StructType struct
+		Struct     token.Pos  # position of "struct" keyword
+		Fields     *FieldList # list of field declarations
+		Incomplete bool       # true if (source) fields are missing in the Fields list
+
+	# Pointer types are represented via StarExpr nodes.
+
+	# A FuncType node represents a function type.
+	FuncType struct
+		Func    token.Pos  # position of "func" keyword
+		Params  *FieldList # (incoming) parameters; or nil
+		Results *FieldList # (outgoing) results; or nil
+
+	# An InterfaceType node represents an interface type.
+	InterfaceType struct
+		Interface  token.Pos  # position of "interface" keyword
+		Methods    *FieldList # list of methods
+		Incomplete bool       # true if (source) methods are missing in the Methods list
+
+	# A MapType node represents a map type.
+	MapType struct
+		Map   token.Pos # position of "map" keyword
+		Key   Expr
+		Value Expr
+
+	# A ChanType node represents a channel type.
+	ChanType struct
+		Begin token.Pos # position of "chan" keyword or "<-" (whichever comes first)
+		Arrow token.Pos # position of "<-" (noPos if there is no "<-")
+		Dir   ChanDir   # channel direction
+		Value Expr      # value type
+
+# Pos and End implementations for expression/type nodes.
+#
+func *BadExpr.Pos() token.Pos
+	return self.From
+
+
+func *Ident.Pos() token.Pos
+	return self.NamePos
+
+
+func *Ellipsis.Pos() token.Pos
+	return self.Ellipsis
+
+
+func *BasicLit.Pos() token.Pos
+	return self.ValuePos
+
+
+func *FuncLit.Pos() token.Pos
+	return self.Type.Pos()
+
+
+func *CompositeLit.Pos() token.Pos
+	if self.Type != nil
+		return self.Type.Pos()
+
+	return self.Lbrace
+
+func *ParenExpr.Pos() token.Pos
+	return self.Lparen
+
+func *SelectorExpr.Pos() token.Pos
+	return self.X.Pos()
+
+func *IndexExpr.Pos() token.Pos
+	return self.X.Pos()
+
+func *SliceExpr.Pos() token.Pos
+	return self.X.Pos()
+
+func *TypeAssertExpr.Pos() token.Pos
+	return self.X.Pos()
+
+func *CallExpr.Pos() token.Pos
+	return self.Fun.Pos()
+
+func *StarExpr.Pos() token.Pos
+	return self.Star
+
+func *UnaryExpr.Pos() token.Pos
+	return self.OpPos
+
+func *BinaryExpr.Pos() token.Pos
+	return self.X.Pos()
+
+func *KeyValueExpr.Pos() token.Pos
+	return self.Key.Pos()
+
+func *ArrayType.Pos() token.Pos
+	return self.Lbrack
+
+func *StructType.Pos() token.Pos
+	return self.Struct
+
+func *FuncType.Pos() token.Pos
+	return self.Func
+
+func *InterfaceType.Pos() token.Pos
+	return self.Interface
+
+func *MapType.Pos() token.Pos
+	return self.Map
+
+func *ChanType.Pos() token.Pos
+	return self.Begin
+
+func *BadExpr.End() token.Pos
+	return self.To
+
+func *Ident.End() token.Pos
+	return token.Pos(int(self.NamePos) + len(self.Name))
+
+func *Ellipsis.End() token.Pos
+	if self.Elt != nil
+		return self.Elt.End()
+
+	return self.Ellipsis + 3 # len("...")
+
+func *BasicLit.End() token.Pos
+	return token.Pos(int(self.ValuePos) + len(self.Value))
+
+func *FuncLit.End() token.Pos
+	return self.Body.End()
+
+func *CompositeLit.End() token.Pos
+	return self.Rbrace + 1
+
+func *ParenExpr.End() token.Pos
+	return self.Rparen + 1
+
+func *SelectorExpr.End() token.Pos
+	return self.Sel.End()
+
+func *IndexExpr.End() token.Pos
+	return self.Rbrack + 1
+
+func *SliceExpr.End() token.Pos
+	return self.Rbrack + 1
+
+func *TypeAssertExpr.End() token.Pos
+	if self.Type != nil
+		return self.Type.End()
+
+	return self.X.End()
+
+func *CallExpr.End() token.Pos
+	return self.Rparen + 1
+
+func *StarExpr.End() token.Pos
+	return self.X.End()
+
+func *UnaryExpr.End() token.Pos
+	return self.X.End()
+
+func *BinaryExpr.End() token.Pos
+	return self.Y.End()
+
+func *KeyValueExpr.End() token.Pos
+	return self.Value.End()
+
+func *ArrayType.End() token.Pos
+	return self.Elt.End()
+
+func *StructType.End() token.Pos
+	return self.Fields.End()
+
+func *FuncType.End() token.Pos
+	if self.Results != nil
+		return self.Results.End()
+
+	return self.Params.End()
+
+func *InterfaceType.End() token.Pos
+	return self.Methods.End()
+
+func *MapType.End() token.Pos
+	return self.Value.End()
+
+func *ChanType.End() token.Pos
+	return self.Value.End()
+
+# exprNode() ensures that only expression/type nodes can be
+# assigned to an ExprNode.
+#
+func *BadExpr.exprNode():
+func *Ident.exprNode():
+func *Ellipsis.exprNode():
+func *BasicLit.exprNode():
+func *FuncLit.exprNode():
+func *CompositeLit.exprNode():
+func *ParenExpr.exprNode():
+func *SelectorExpr.exprNode():
+func *IndexExpr.exprNode():
+func *SliceExpr.exprNode():
+func *TypeAssertExpr.exprNode():
+func *CallExpr.exprNode():
+func *StarExpr.exprNode():
+func *UnaryExpr.exprNode():
+func *BinaryExpr.exprNode():
+func *KeyValueExpr.exprNode():
+func *ArrayType.exprNode():
+func *StructType.exprNode():
+func *FuncType.exprNode():
+func *InterfaceType.exprNode():
+func *MapType.exprNode():
+func *ChanType.exprNode():
+
+# ----------------------------------------------------------------------------
+# Convenience functions for Idents
+
+var noPos token.Pos
+
+# NewIdent creates a new Ident without position.
+# Useful for ASTs generated by code other than the Go parser.
+#
+func NewIdent(name string) *Ident
+	return &Ident{noPos, name, nil}
+
+# IsExported returns whether name is an exported Go symbol
+# (i.e., whether it begins with an uppercase letter).
+#
+func IsExported(name string) bool
+	ch, _ := utf8.DecodeRuneInString(name)
+	return unicode.IsUpper(ch)
+
+# IsExported returns whether id is an exported Go symbol
+# (i.e., whether it begins with an uppercase letter).
+#
+func *Ident.IsExported() bool
+	return IsExported(self.Name)
+
+func *Ident.String() string
+	if self != nil
+		return self.Name
+
+	return "<nil>"
+
+# ----------------------------------------------------------------------------
+# Statements
+
+# A statement is represented by a tree consisting of one
+# or more of the following concrete statement nodes.
+#
+type
+  # A BadStmt node is a placeholder for statements containing
+	# syntax errors for which no correct statement nodes can be
+	# created.
+	#
+	BadStmt struct
+		From, To token.Pos # position range of bad statement
+
+	# A DeclStmt node represents a declaration in a statement list.
+	DeclStmt struct
+		Decl Decl # *GenDecl with CONST, TYPE, or VAR token
+
+	# An EmptyStmt node represents an empty statement.
+	# The "position" of the empty statement is the position
+	# of the immediately preceding semicolon.
+	#
+	EmptyStmt struct
+		Semicolon token.Pos # position of preceding ";"
+
+	# A LabeledStmt node represents a labeled statement.
+	LabeledStmt struct
+		Label *Ident
+		Colon token.Pos # position of ":"
+		Stmt  Stmt
+
+	# An ExprStmt node represents a (stand-alone) expression
+	# in a statement list.
+	#
+	ExprStmt struct
+		X Expr # expression
+
+	# A SendStmt node represents a send statement.
+	SendStmt struct
+		Chan  Expr
+		Arrow token.Pos # position of "<-"
+		Value Expr
+
+	# An IncDecStmt node represents an increment or decrement statement.
+	IncDecStmt struct
+		X      Expr
+		TokPos token.Pos   # position of Tok
+		Tok    token.Token # INC or DEC
+
+	# An AssignStmt node represents an assignment or
+	# a short variable declaration.
+	#
+	AssignStmt struct
+		Lhs    []Expr
+		TokPos token.Pos   # position of Tok
+		Tok    token.Token # assignment token, DEFINE
+		Rhs    []Expr
+	
+  # A GoStmt node represents a go statement.
+	GoStmt struct
+		Go   token.Pos # position of "go" keyword
+		Call *CallExpr
+	
+  # A DeferStmt node represents a defer statement.
+	DeferStmt struct
+		Defer token.Pos # position of "defer" keyword
+		Call  *CallExpr
+	
+  # A ReturnStmt node represents a return statement.
+	ReturnStmt struct
+		Return  token.Pos # position of "return" keyword
+		Results []Expr    # result expressions; or nil
+
+	# A BranchStmt node represents a break, continue, goto,
+	# or fallthrough statement.
+	#
+	BranchStmt struct
+		TokPos token.Pos   # position of Tok
+		Tok    token.Token # keyword token (BREAK, CONTINUE, GOTO, FALLTHROUGH)
+		Label  *Ident      # label name; or nil
+
+	# A BlockStmt node represents a braced statement list.
+	BlockStmt struct
+		Opening token.Pos # position of "INDENT" or "COLON"
+		List    []Stmt
+		Closing token.Pos # position of "DEDENT" or "EOL"
+		Small   bool      # is a oneliner ?
+
+	# An IfStmt node represents an if statement.
+	IfStmt struct
+		If   token.Pos # position of "if" keyword
+		Init Stmt      # initialization statement; or nil
+		Cond Expr      # condition
+		Body *BlockStmt
+		Else Stmt # else branch; or nil
+
+	# A CaseClause represents a case of an expression or type switch statement.
+	CaseClause struct
+		Case  token.Pos # position of "case" or "default" keyword
+		List  []Expr    # list of expressions or types; nil means default case
+		Colon token.Pos # position of ":"
+		Body  []Stmt    # statement list; or nil
+
+	# A SwitchStmt node represents an expression switch statement.
+	SwitchStmt struct
+		Switch token.Pos  # position of "switch" keyword
+		Init   Stmt       # initialization statement; or nil
+		Tag    Expr       # tag expression; or nil
+		Body   *BlockStmt # CaseClauses only
+
+	# An TypeSwitchStmt node represents a type switch statement.
+	TypeSwitchStmt struct
+		Switch token.Pos  # position of "switch" keyword
+		Init   Stmt       # initialization statement; or nil
+		Assign Stmt       # x := y.(type) or y.(type)
+		Body   *BlockStmt # CaseClauses only
+
+	# A CommClause node represents a case of a select statement.
+	CommClause struct
+		Case  token.Pos # position of "case" or "default" keyword
+		Comm  Stmt      # send or receive statement; nil means default case
+		Colon token.Pos # position of ":"
+		Body  []Stmt    # statement list; or nil
+
+	# An SelectStmt node represents a select statement.
+	SelectStmt struct
+		Select token.Pos  # position of "select" keyword
+		Body   *BlockStmt # CommClauses only
+
+	# A ForStmt represents a for statement.
+	ForStmt struct
+		For  token.Pos # position of "for" keyword
+		Init Stmt      # initialization statement; or nil
+		Cond Expr      # condition; or nil
+		Post Stmt      # post iteration statement; or nil
+		Body *BlockStmt
+	
+  # A RangeStmt represents a for statement with a range clause.
+	RangeStmt struct
+		For        token.Pos   # position of "for" keyword
+		Key, Value Expr        # Value may be nil
+		TokPos     token.Pos   # position of Tok
+		Tok        token.Token # ASSIGN, DEFINE
+		X          Expr        # value to range over
+		Body       *BlockStmt
+
+# Pos and End implementations for statement nodes.
+#
+func *BadStmt.Pos() token.Pos
+	return self.From
+
+func *DeclStmt.Pos() token.Pos
+	return self.Decl.Pos()
+
+func *EmptyStmt.Pos() token.Pos
+	return self.Semicolon
+
+func *LabeledStmt.Pos() token.Pos
+	return self.Label.Pos()
+
+func *ExprStmt.Pos() token.Pos
+	return self.X.Pos()
+
+func *SendStmt.Pos() token.Pos
+	return self.Chan.Pos()
+
+func *IncDecStmt.Pos() token.Pos
+	return self.X.Pos()
+
+func *AssignStmt.Pos() token.Pos
+	return self.Lhs[0].Pos()
+
+func *GoStmt.Pos() token.Pos
+	return self.Go
+
+func *DeferStmt.Pos() token.Pos
+	return self.Defer
+
+func *ReturnStmt.Pos() token.Pos
+	return self.Return
+
+func *BranchStmt.Pos() token.Pos
+	return self.TokPos
+
+func *BlockStmt.Pos() token.Pos
+	return self.Opening
+
+func *IfStmt.Pos() token.Pos
+	return self.If
+
+func *CaseClause.Pos() token.Pos
+	return self.Case
+
+func *SwitchStmt.Pos() token.Pos
+	return self.Switch
+
+func *TypeSwitchStmt.Pos() token.Pos
+	return self.Switch
+
+func *CommClause.Pos() token.Pos
+	return self.Case
+
+func *SelectStmt.Pos() token.Pos
+	return self.Select
+
+func *ForStmt.Pos() token.Pos
+	return self.For
+
+func *RangeStmt.Pos() token.Pos
+	return self.For
+
+func *BadStmt.End() token.Pos
+	return self.To
+
+func *DeclStmt.End() token.Pos
+	return self.Decl.End()
+
+func *EmptyStmt.End() token.Pos
+	return self.Semicolon + 1 # len(";")
+
+func *LabeledStmt.End() token.Pos
+	return self.Stmt.End()
+
+func *ExprStmt.End() token.Pos
+	return self.X.End()
+
+func *SendStmt.End() token.Pos
+	return self.Value.End()
+
+func *IncDecStmt.End() token.Pos
+	return self.TokPos + 2 # len("++")
+
+func *AssignStmt.End() token.Pos
+	return self.Rhs[len(self.Rhs)-1].End()
+
+func *GoStmt.End() token.Pos
+	return self.Call.End()
+
+func *DeferStmt.End() token.Pos
+	return self.Call.End()
+
+func *ReturnStmt.End() token.Pos
+	if n := len(self.Results); n > 0
+		return self.Results[n-1].End()
+
+	return self.Return + 6 # len("return")
+
+func *BranchStmt.End() token.Pos
+	if self.Label != nil
+		return self.Label.End()
+
+	return token.Pos(int(self.TokPos) + len(self.Tok.String()))
+
+func *BlockStmt.End() token.Pos
+	return self.Closing + 1
+
+func *IfStmt.End() token.Pos
+	if self.Else != nil
+		return self.Else.End()
+
+	return self.Body.End()
+
+func *CaseClause.End() token.Pos
+	if n := len(self.Body); n > 0
+		return self.Body[n-1].End()
+
+	return self.Colon + 1
+
+func *SwitchStmt.End() token.Pos
+	return self.Body.End()
+
+func *TypeSwitchStmt.End() token.Pos
+	return self.Body.End()
+
+func *CommClause.End() token.Pos
+	if n := len(self.Body); n > 0
+		return self.Body[n-1].End()
+
+	return self.Colon + 1
+
+func *SelectStmt.End() token.Pos
+	return self.Body.End()
+
+func *ForStmt.End() token.Pos
+	return self.Body.End()
+
+func *RangeStmt.End() token.Pos
+	return self.Body.End()
+
+# stmtNode() ensures that only statement nodes can be
+# assigned to a StmtNode.
+#
+func *BadStmt.stmtNode():
+func *DeclStmt.stmtNode():
+func *EmptyStmt.stmtNode():
+func *LabeledStmt.stmtNode():
+func *ExprStmt.stmtNode():
+func *SendStmt.stmtNode():
+func *IncDecStmt.stmtNode():
+func *AssignStmt.stmtNode():
+func *GoStmt.stmtNode():
+func *DeferStmt.stmtNode():
+func *ReturnStmt.stmtNode():
+func *BranchStmt.stmtNode():
+func *BlockStmt.stmtNode():
+func *IfStmt.stmtNode():
+func *CaseClause.stmtNode():
+func *SwitchStmt.stmtNode():
+func *TypeSwitchStmt.stmtNode():
+func *CommClause.stmtNode():
+func *SelectStmt.stmtNode():
+func *ForStmt.stmtNode():
+func *RangeStmt.stmtNode():
+# ----------------------------------------------------------------------------
+# Declarations
+
+# A Spec node represents a single (non-parenthesized) import,
+# constant, type, or variable declaration.
+#
+
+type
+
+  # The Spec type stands for any of *ImportSpec, *ValueSpec, and *TypeSpec.
+	Spec interface
+		Node
+		specNode()
+	
+  # An ImportSpec node represents a single package import.
+	ImportSpec struct
+		Doc     *CommentGroup # associated documentation; or nil
+		Name    *Ident        # local package name (including "."); or nil
+		Path    *BasicLit     # import path
+		Comment *CommentGroup # line comments; or nil
+		EndPos  token.Pos     # end of spec (overrides Path.Pos if nonzero)
+
+	# A ValueSpec node represents a constant or variable declaration
+	# (ConstSpec or VarSpec production).
+	#
+	ValueSpec struct
+		Doc     *CommentGroup # associated documentation; or nil
+		Names   []*Ident      # value names (len(Names) > 0)
+		Type    Expr          # value type; or nil
+		Values  []Expr        # initial values; or nil
+		Comment *CommentGroup # line comments; or nil
+
+	# A TypeSpec node represents a type declaration (TypeSpec production).
+	TypeSpec struct
+		Doc     *CommentGroup # associated documentation; or nil
+		Name    *Ident        # type name
+		Type    Expr          # *Ident, *ParenExpr, *SelectorExpr, *StarExpr, or any of the *XxxTypes
+		Comment *CommentGroup # line comments; or nil
+
+# Pos and End implementations for spec nodes.
+#
+func *ImportSpec.Pos() token.Pos
+	if self.Name != nil
+		return self.Name.Pos()
+
+	return self.Path.Pos()
+
+func *ValueSpec.Pos() token.Pos
+	return self.Names[0].Pos()
+
+func *TypeSpec.Pos() token.Pos
+	return self.Name.Pos()
+
+func *ImportSpec.End() token.Pos
+	if self.EndPos != 0
+		return self.EndPos
+
+	return self.Path.End()
+
+func *ValueSpec.End() token.Pos
+	if n := len(self.Values); n > 0
+		return self.Values[n-1].End()
+
+	if self.Type != nil
+		return self.Type.End()
+
+	return self.Names[len(self.Names)-1].End()
+
+func *TypeSpec.End() token.Pos
+	return self.Type.End()
+
+# specNode() ensures that only spec nodes can be
+# assigned to a Spec.
+#
+func *ImportSpec.specNode():
+func *ValueSpec.specNode():
+func *TypeSpec.specNode():
+
+# A declaration is represented by one of the following declaration nodes.
+#
+
+type
+  # A BadDecl node is a placeholder for declarations containing
+	# syntax errors for which no correct declaration nodes can be
+	# created.
+	#
+	BadDecl struct
+		From, To token.Pos # position range of bad declaration
+
+	# A GenDecl node (generic declaration node) represents an import,
+	# constant, type or variable declaration. A valid Lparen position
+	# (Lparen.Line > 0) indicates a parenthesized declaration.
+	#
+	# Relationship between Tok value and Specs element type:
+	#
+	#	token.IMPORT  *ImportSpec
+	#	token.CONST   *ValueSpec
+	#	token.TYPE    *TypeSpec
+	#	token.VAR     *ValueSpec
+	#
+	GenDecl struct
+		Doc    *CommentGroup # associated documentation; or nil
+		TokPos token.Pos     # position of Tok
+		Tok    token.Token   # IMPORT, CONST, TYPE, VAR
+		Indent token.Pos     # position of '(', if any
+		Specs  []Spec
+		Dedent token.Pos # position of ')', if any
+
+	# A FuncDecl node represents a function declaration.
+	FuncDecl struct
+		Doc  *CommentGroup # associated documentation; or nil
+		Recv *FieldList    # receiver (methods); or nil (functions)
+		Name *Ident        # function/method name
+		Type *FuncType     # position of Func keyword, parameters and results
+		Body *BlockStmt    # function body; or nil (forward declaration)
+
+# Pos and End implementations for declaration nodes.
+#
+func *BadDecl.Pos() token.Pos
+	return self.From
+
+func *GenDecl.Pos() token.Pos
+	return self.TokPos
+
+func *FuncDecl.Pos() token.Pos
+	return self.Type.Pos()
+
+func *BadDecl.End() token.Pos
+	return self.To
+
+func *GenDecl.End() token.Pos
+	if self.Dedent.IsValid()
+		return self.Dedent + 1
+
+	return self.Specs[0].End()
+
+func *FuncDecl.End() token.Pos
+	if self.Body != nil
+		return self.Body.End()
+
+	return self.Type.End()
+
+# declNode() ensures that only declaration nodes can be
+# assigned to a DeclNode.
+#
+func *BadDecl.declNode():
+func *GenDecl.declNode():
+func *FuncDecl.declNode():
+# ----------------------------------------------------------------------------
+# Files and packages
+
+# A File node represents a Go source file.
+#
+# The Comments list contains all comments in the source file in order of
+# appearance, including the comments that are pointed to from other nodes
+# via Doc and Comment fields.
+#
+type File struct
+	Doc        *CommentGroup   # associated documentation; or nil
+	Package    token.Pos       # position of "package" keyword
+	Name       *Ident          # package name
+	Decls      []Decl          # top-level declarations; or nil
+	Scope      *Scope          # package scope (this file only)
+	Imports    []*ImportSpec   # imports in this file
+	Unresolved []*Ident        # unresolved identifiers in this file
+	Comments   []*CommentGroup # list of all comments in the source file
+
+func *File.Pos() token.Pos
+	return self.Package
+
+func *File.End() token.Pos
+	if n := len(self.Decls); n > 0
+		return self.Decls[n-1].End()
+
+	return self.Name.End()
+
+# A Package node represents a set of source files
+# collectively building a Go package.
+#
+type Package struct
+	Name    string             # package name
+	Scope   *Scope             # package scope across all files
+	Imports map[string]*Object # map of package id -> package object
+	Files   map[string]*File   # Go source files by filename
+
+func *Package.Pos() token.Pos
+	return token.NoPos
+
+func *Package.End() token.Pos
+	return token.NoPos
