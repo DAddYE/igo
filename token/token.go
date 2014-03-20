@@ -15,8 +15,7 @@ import "strconv"
 type Token int
 
 // The list of tokens.
-const (
-	// Special tokens
+const ( // Special tokens
 	ILLEGAL Token = iota
 	EOF
 	COMMENT
@@ -239,13 +238,15 @@ var tokens = [...]string{
 // "+"). For all other tokens the string corresponds to the token
 // constant name (e.g. for the token IDENT, the string is "IDENT").
 //
-func (tok Token) String() string {
+func (self Token) String() string {
 	s := ""
-	if 0 <= tok && tok < Token(len(tokens)) {
-		s = tokens[tok]
+	if 0 <= self && self < Token(len(tokens)) {
+		s = tokens[self]
+
 	}
 	if s == "" {
-		s = "token(" + strconv.Itoa(int(tok)) + ")"
+		s = "token(" + strconv.Itoa(int(self)) + ")"
+
 	}
 	return s
 }
@@ -266,20 +267,33 @@ const (
 // operator op. If op is not a binary operator, the result
 // is LowestPrecedence.
 //
-func (op Token) Precedence() int {
-	switch op {
+func (self Token) Precedence() int {
+	switch self {
 	case LOR:
+
 		return 1
+
 	case LAND:
+
 		return 2
+
 	case EQL, NEQ, LSS, LEQ, GTR, GEQ:
+
 		return 3
+
 	case ADD, SUB, OR, XOR:
+
 		return 4
+
 	case MUL, QUO, REM, SHL, SHR, AND, AND_NOT:
+
 		return 5
+
+
+
 	}
 	return LowestPrec
+
 }
 
 var keywords map[string]Token
@@ -288,14 +302,14 @@ func init() {
 	keywords = make(map[string]Token)
 	for i := keyword_beg + 1; i < keyword_end; i++ {
 		keywords[tokens[i]] = i
-	}
-}
 
-// Lookup maps an identifier to its keyword token or IDENT (if not a keyword).
-//
+	} // Lookup maps an identifier to its keyword token or IDENT (if not a keyword).
+	//
+}
 func Lookup(ident string) Token {
 	if tok, is_keyword := keywords[ident]; is_keyword {
 		return tok
+
 	}
 	return IDENT
 }
@@ -305,14 +319,20 @@ func Lookup(ident string) Token {
 // IsLiteral returns true for tokens corresponding to identifiers
 // and basic type literals; it returns false otherwise.
 //
-func (tok Token) IsLiteral() bool { return literal_beg < tok && tok < literal_end }
+func (self Token) IsLiteral() bool {
+	return literal_beg < self && self < literal_end
+}
 
 // IsOperator returns true for tokens corresponding to operators and
 // delimiters; it returns false otherwise.
 //
-func (tok Token) IsOperator() bool { return operator_beg < tok && tok < operator_end }
+func (self Token) IsOperator() bool {
+	return operator_beg < self && self < operator_end
+}
 
 // IsKeyword returns true for tokens corresponding to keywords;
 // it returns false otherwise.
 //
-func (tok Token) IsKeyword() bool { return keyword_beg < tok && tok < keyword_end }
+func (self Token) IsKeyword() bool {
+	return keyword_beg < self && self < keyword_end
+}

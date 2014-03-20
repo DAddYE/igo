@@ -22,13 +22,13 @@ type Error struct {
 }
 
 // Error implements the error interface.
-func (e Error) Error() string {
-	if e.Pos.Filename != "" || e.Pos.IsValid() {
-		// don't print "<unknown position>"
+func (self Error) Error() string {
+	if self.Pos.Filename != "" || self.Pos.IsValid() { // don't print "<unknown position>"
 		// TODO(gri) reconsider the semantics of Position.IsValid
-		return e.Pos.String() + ": " + e.Msg
+		return self.Pos.String() + ": " + self.Msg
+
 	}
-	return e.Msg
+	return self.Msg
 }
 
 // ErrorList is a list of *Errors.
@@ -37,32 +37,41 @@ func (e Error) Error() string {
 type ErrorList []*Error
 
 // Add adds an Error with given position and error message to an ErrorList.
-func (p *ErrorList) Add(pos token.Position, msg string) {
-	*p = append(*p, &Error{pos, msg})
+func (self *ErrorList) Add(pos token.Position, msg string) {
+	*self = append(*self, &Error{pos, msg})
 }
 
 // Reset resets an ErrorList to no errors.
-func (p *ErrorList) Reset() { *p = (*p)[0:0] }
+func (self *ErrorList) Reset() {
+	*self = (*self)[0:0]
+}
 
 // ErrorList implements the sort Interface.
-func (p ErrorList) Len() int      { return len(p) }
-func (p ErrorList) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+func (self ErrorList) Len() int {
+	return len(self)
+}
+func (self ErrorList) Swap(i, j int) {
+	self[i], self[j] = self[j], self[i]
 
-func (p ErrorList) Less(i, j int) bool {
-	e := &p[i].Pos
-	f := &p[j].Pos
+}
+func (self ErrorList) Less(i, j int) bool {
+	e := &self[i].Pos
+	f := &self[j].Pos
 	// Note that it is not sufficient to simply compare file offsets because
 	// the offsets do not reflect modified line information (through //line
 	// comments).
 	if e.Filename < f.Filename {
 		return true
+
 	}
 	if e.Filename == f.Filename {
 		if e.Line < f.Line {
 			return true
+
 		}
 		if e.Line == f.Line {
 			return e.Column < f.Column
+
 		}
 	}
 	return false
@@ -72,43 +81,51 @@ func (p ErrorList) Less(i, j int) bool {
 // other errors are sorted by error message, and before any *Error
 // entry.
 //
-func (p ErrorList) Sort() {
-	sort.Sort(p)
+func (self ErrorList) Sort() {
+	sort.Sort(self)
 }
 
 // RemoveMultiples sorts an ErrorList and removes all but the first error per line.
-func (p *ErrorList) RemoveMultiples() {
-	sort.Sort(p)
+func (self *ErrorList) RemoveMultiples() {
+	sort.Sort(self)
 	var last token.Position // initial last.Line is != any legal error line
 	i := 0
-	for _, e := range *p {
+	for _, e := range *self {
 		if e.Pos.Filename != last.Filename || e.Pos.Line != last.Line {
 			last = e.Pos
-			(*p)[i] = e
+			(*self)[i] = e
 			i++
+
 		}
 	}
-	(*p) = (*p)[0:i]
+	(*self) = (*self)[0:i]
 }
 
 // An ErrorList implements the error interface.
-func (p ErrorList) Error() string {
-	switch len(p) {
+func (self ErrorList) Error() string {
+	switch len(self) {
 	case 0:
+
 		return "no errors"
+
 	case 1:
-		return p[0].Error()
+
+		return self[0].Error()
+
+
+
 	}
-	return fmt.Sprintf("%s (and %d more errors)", p[0], len(p)-1)
+	return fmt.Sprintf("%s (and %d more errors)", self[0], len(self)-1)
 }
 
 // Err returns an error equivalent to this error list.
 // If the list is empty, Err returns nil.
-func (p ErrorList) Err() error {
-	if len(p) == 0 {
+func (self ErrorList) Err() error {
+	if len(self) == 0 {
 		return nil
+
 	}
-	return p
+	return self
 }
 
 // PrintError is a utility function that prints a list of errors to w,
@@ -119,8 +136,10 @@ func PrintError(w io.Writer, err error) {
 	if list, ok := err.(ErrorList); ok {
 		for _, e := range list {
 			fmt.Fprintf(w, "%s\n", e)
+
 		}
 	} else if err != nil {
 		fmt.Fprintf(w, "%s\n", err)
+
 	}
 }

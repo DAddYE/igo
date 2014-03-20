@@ -25,22 +25,34 @@ func readSource(filename string, src interface{}) ([]byte, error) {
 	if src != nil {
 		switch s := src.(type) {
 		case string:
+
 			return []byte(s), nil
+
 		case []byte:
+
 			return s, nil
+
 		case *bytes.Buffer:
 			// is io.Reader, but src is already available in []byte form
 			if s != nil {
 				return s.Bytes(), nil
+
 			}
+
 		case io.Reader:
+
 			var buf bytes.Buffer
 			if _, err := io.Copy(&buf, s); err != nil {
 				return nil, err
+
 			}
 			return buf.Bytes(), nil
+
+
+
 		}
 		return nil, errors.New("invalid source")
+
 	}
 	return ioutil.ReadFile(filename)
 }
@@ -52,13 +64,13 @@ func readSource(filename string, src interface{}) ([]byte, error) {
 type Mode uint
 
 const (
-	PackageClauseOnly Mode             = 1 << iota // stop parsing after package clause
-	ImportsOnly                                    // stop parsing after import declarations
-	ParseComments                                  // parse comments and add them to AST
-	Trace                                          // print a trace of parsed productions
-	DeclarationErrors                              // report declaration errors
-	SpuriousErrors                                 // same as AllErrors, for backward-compatibility
-	AllErrors         = SpuriousErrors             // report all errors (not just the first 10 on different lines)
+	PackageClauseOnly Mode = 1 << iota // stop parsing after package clause
+	ImportsOnly       // stop parsing after import declarations
+	ParseComments     // parse comments and add them to AST
+	Trace             // print a trace of parsed productions
+	DeclarationErrors // report declaration errors
+	SpuriousErrors    // same as AllErrors, for backward-compatibility
+	AllErrors         = SpuriousErrors // report all errors (not just the first 10 on different lines)
 )
 
 // ParseFile parses the source code of a single Go source file and returns
@@ -80,30 +92,27 @@ const (
 // representing the fragments of erroneous source code). Multiple errors
 // are returned via a scanner.ErrorList which is sorted by file position.
 //
-func ParseFile(fset *token.FileSet, filename string, src interface{}, mode Mode) (f *ast.File, err error) {
-	// get source
+func ParseFile(fset *token.FileSet, filename string, src interface{}, mode Mode) (f *ast.File, err error) { // get source
 	text, err := readSource(filename, src)
 	if err != nil {
 		return nil, err
-	}
 
+	}
 	var p parser
 	defer func() {
 		if e := recover(); e != nil {
 			_ = e.(bailout) // re-panics if it's not a bailout
-		}
 
-		// set result values
-		if f == nil {
-			// source is not a valid Go source file - satisfy
+		} // set result values
+		if f == nil { // source is not a valid Go source file - satisfy
 			// ParseFile API and return a valid (but) empty
 			// *ast.File
 			f = &ast.File{
 				Name:  new(ast.Ident),
 				Scope: ast.NewScope(nil),
 			}
-		}
 
+		}
 		p.errors.Sort()
 		err = p.errors.Err()
 	}()
@@ -129,14 +138,15 @@ func ParseDir(fset *token.FileSet, path string, filter func(os.FileInfo) bool, m
 	fd, err := os.Open(path)
 	if err != nil {
 		return nil, err
+
 	}
 	defer fd.Close()
 
 	list, err := fd.Readdir(-1)
 	if err != nil {
 		return nil, err
-	}
 
+	}
 	pkgs = make(map[string]*ast.Package)
 	for _, d := range list {
 		if filter == nil || filter(d) {
@@ -150,14 +160,15 @@ func ParseDir(fset *token.FileSet, path string, filter func(os.FileInfo) bool, m
 						Files: make(map[string]*ast.File),
 					}
 					pkgs[name] = pkg
+
 				}
 				pkg.Files[filename] = src
 			} else if first == nil {
 				first = err
+
 			}
 		}
 	}
-
 	return
 }
 
@@ -182,7 +193,7 @@ func ParseExpr(x string) (ast.Expr, error) {
 	if p.errors.Len() > 0 {
 		p.errors.Sort()
 		return nil, p.errors.Err()
-	}
 
+	}
 	return e, nil
 }

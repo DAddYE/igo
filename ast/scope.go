@@ -31,8 +31,8 @@ func NewScope(outer *Scope) *Scope {
 // found in scope s, otherwise it returns nil. Outer scopes
 // are ignored.
 //
-func (s *Scope) Lookup(name string) *Object {
-	return s.Objects[name]
+func (self *Scope) Lookup(name string) *Object {
+	return self.Objects[name]
 }
 
 // Insert attempts to insert a named object obj into the scope s.
@@ -40,21 +40,23 @@ func (s *Scope) Lookup(name string) *Object {
 // Insert leaves the scope unchanged and returns alt. Otherwise
 // it inserts obj and returns nil."
 //
-func (s *Scope) Insert(obj *Object) (alt *Object) {
-	if alt = s.Objects[obj.Name]; alt == nil {
-		s.Objects[obj.Name] = obj
+func (self *Scope) Insert(obj *Object) (alt *Object) {
+	if alt = self.Objects[obj.Name]; alt == nil {
+		self.Objects[obj.Name] = obj
+
 	}
 	return
 }
 
 // Debugging support
-func (s *Scope) String() string {
+func (self *Scope) String() string {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "scope %p {", s)
-	if s != nil && len(s.Objects) > 0 {
+	fmt.Fprintf(&buf, "scope %p {", self)
+	if self != nil && len(self.Objects) > 0 {
 		fmt.Fprintln(&buf)
-		for _, obj := range s.Objects {
+		for _, obj := range self.Objects {
 			fmt.Fprintf(&buf, "\t%s %s\n", obj.Kind, obj.Name)
+
 		}
 	}
 	fmt.Fprintf(&buf, "}\n")
@@ -91,46 +93,68 @@ func NewObj(kind ObjKind, name string) *Object {
 // Pos computes the source position of the declaration of an object name.
 // The result may be an invalid position if it cannot be computed
 // (obj.Decl may be nil or not correct).
-func (obj *Object) Pos() token.Pos {
-	name := obj.Name
-	switch d := obj.Decl.(type) {
+func (self *Object) Pos() token.Pos {
+	name := self.Name
+	switch d := self.Decl.(type) {
 	case *Field:
+
 		for _, n := range d.Names {
 			if n.Name == name {
 				return n.Pos()
+
 			}
 		}
+
 	case *ImportSpec:
+
 		if d.Name != nil && d.Name.Name == name {
 			return d.Name.Pos()
+
 		}
 		return d.Path.Pos()
+
 	case *ValueSpec:
+
 		for _, n := range d.Names {
 			if n.Name == name {
 				return n.Pos()
+
 			}
 		}
+
 	case *TypeSpec:
+
 		if d.Name.Name == name {
 			return d.Name.Pos()
+
 		}
+
 	case *FuncDecl:
+
 		if d.Name.Name == name {
 			return d.Name.Pos()
+
 		}
+
 	case *LabeledStmt:
+
 		if d.Label.Name == name {
 			return d.Label.Pos()
+
 		}
+
 	case *AssignStmt:
+
 		for _, x := range d.Lhs {
 			if ident, isIdent := x.(*Ident); isIdent && ident.Name == name {
 				return ident.Pos()
+
 			}
 		}
+
 	case *Scope:
 		// predeclared object - nothing to do for now
+
 	}
 	return token.NoPos
 }
@@ -141,12 +165,12 @@ type ObjKind int
 // The list of possible Object kinds.
 const (
 	Bad ObjKind = iota // for error handling
-	Pkg                // package
-	Con                // constant
-	Typ                // type
-	Var                // variable
-	Fun                // function or method
-	Lbl                // label
+	Pkg // package
+	Con // constant
+	Typ // type
+	Var // variable
+	Fun // function or method
+	Lbl // label
 )
 
 var objKindStrings = [...]string{
@@ -159,4 +183,6 @@ var objKindStrings = [...]string{
 	Lbl: "label",
 }
 
-func (kind ObjKind) String() string { return objKindStrings[kind] }
+func (self ObjKind) String() string {
+	return objKindStrings[self]
+}

@@ -30,8 +30,8 @@ type ErrorHandler func(pos token.Position, msg string)
 // a given text.  It can be allocated as part of another data
 // structure but must be initialized via Init before use.
 //
-type Scanner struct {
-	// immutable state
+type Scanner struct /* immutable state  */ 
+{
 	file *token.File  // source file handle
 	dir  string       // directory portion of file.Name()
 	src  []byte       // source
@@ -70,42 +70,48 @@ const bom = 0xFEFF // byte order mark, only permitted as very first character
 // Read the next Unicode char into s.ch.
 // s.ch < 0 means end-of-file.
 //
-func (s *Scanner) next() {
-	if s.rdOffset < len(s.src) {
-		s.offset = s.rdOffset
-		if s.ch == '\n' {
-			s.lineOffset = s.offset
-			s.file.AddLine(s.offset)
-			s.whiteWidth = 0
+func (self *Scanner) next() {
+	if self.rdOffset < len(self.src) {
+		self.offset = self.rdOffset
+		if self.ch == '\n' {
+			self.lineOffset = self.offset
+			self.file.AddLine(self.offset)
+			self.whiteWidth = 0
+
 		}
-		r, w := rune(s.src[s.rdOffset]), 1
+		r, w := rune(self.src[self.rdOffset]), 1
 		switch {
 		case r == 0:
-			s.error(s.offset, "illegal character NUL")
+
+			self.error(self.offset, "illegal character NUL")
+
 		case r >= 0x80:
 			// not ASCII
-			r, w = utf8.DecodeRune(s.src[s.rdOffset:])
+			r, w = utf8.DecodeRune(self.src[self.rdOffset:])
 			if r == utf8.RuneError && w == 1 {
-				s.error(s.offset, "illegal UTF-8 encoding")
-			} else if r == bom && s.offset > 0 {
-				s.error(s.offset, "illegal byte order mark")
+				self.error(self.offset, "illegal UTF-8 encoding")
+			} else if r == bom && self.offset > 0 {
+				self.error(self.offset, "illegal byte order mark")
+
 			}
+
 		}
-		s.rdOffset += w
-		s.ch = r
+		self.rdOffset += w
+		self.ch = r
 	} else {
-		s.offset = len(s.src)
-		if s.ch == '\n' {
-			s.lineOffset = s.offset
-			s.file.AddLine(s.offset)
+		self.offset = len(self.src)
+		if self.ch == '\n' {
+			self.lineOffset = self.offset
+			self.file.AddLine(self.offset)
+
 		}
-		s.ch = -1 // eof
-	}
+		self.ch = -1 // eof
+
+	} // A mode value is a set of flags (or 0).
+	// They control scanner behavior.
+	//
 }
 
-// A mode value is a set of flags (or 0).
-// They control scanner behavior.
-//
 type Mode uint
 
 const (
@@ -127,286 +133,309 @@ const (
 // Note that Init may call err if there is an error in the first character
 // of the file.
 //
-func (s *Scanner) Init(file *token.File, src []byte, err ErrorHandler, mode Mode) {
-	// Explicitly initialize all fields since a scanner may be reused.
+func (self *Scanner) Init(file *token.File, src []byte, err ErrorHandler, mode Mode) { // Explicitly initialize all fields since a scanner may be reused.
 	if file.Size() != len(src) {
 		panic(fmt.Sprintf("file size (%d) does not match src len (%d)", file.Size(), len(src)))
+
 	}
-	s.file = file
-	s.dir, _ = filepath.Split(file.Name())
-	s.src = src
-	s.err = err
-	s.mode = mode
+	self.file = file
+	self.dir, _ = filepath.Split(file.Name())
+	self.src = src
+	self.err = err
+	self.mode = mode
 
-	s.ch = ' '
-	s.offset = 0
-	s.rdOffset = 0
-	s.lineOffset = 0
-	s.ErrorCount = 0
+	self.ch = ' '
+	self.offset = 0
+	self.rdOffset = 0
+	self.lineOffset = 0
+	self.ErrorCount = 0
 
-	s.next()
-	if s.ch == bom {
-		s.next() // ignore BOM at file beginning
+	self.next()
+	if self.ch == bom {
+		self.next() // ignore BOM at file beginning
 	}
 }
+func (self *Scanner) error(offs int, msg string) {
+	if self.err != nil {
+		self.err(self.file.Position(self.file.Pos(offs)), msg)
 
-func (s *Scanner) error(offs int, msg string) {
-	if s.err != nil {
-		s.err(s.file.Position(s.file.Pos(offs)), msg)
 	}
-	s.ErrorCount++
+	self.ErrorCount++
+
 }
 
 var prefix = []byte("#line ")
 
-func (s *Scanner) interpretLineComment(text []byte) {
-	if bytes.HasPrefix(text, prefix) {
-		// get filename and line number, if any
+func (self *Scanner) interpretLineComment(text []byte) {
+	if bytes.HasPrefix(text, prefix) { // get filename and line number, if any
 		if i := bytes.LastIndex(text, []byte{':'}); i > 0 {
-			if line, err := strconv.Atoi(string(text[i+1:])); err == nil && line > 0 {
-				// valid #line filename:line comment;
+			if line, err := strconv.Atoi(string(text[i+1:])); err == nil && line > 0 { // valid #line filename:line comment;
 				filename := filepath.Clean(string(text[len(prefix):i]))
-				if !filepath.IsAbs(filename) {
-					// make filename relative to current directory
-					filename = filepath.Join(s.dir, filename)
-				}
-				// update scanner position
-				s.file.AddLineInfo(s.lineOffset+len(text)+1, filename, line) // +len(text)+1 since comment applies to next line
+				if !filepath.IsAbs(filename) { // make filename relative to current directory
+					filename = filepath.Join(self.dir, filename)
+
+				} // update scanner position
+				self.file.AddLineInfo(self.lineOffset+len(text)+1, filename, line) // +len(text)+1 since comment applies to next line
 			}
 		}
 	}
 }
-
-func (s *Scanner) scanComment() string {
-	// initial '#' already consumed
-	offs := s.offset - 1 // position of '#'
+func (self *Scanner) scanComment() string { // initial '#' already consumed
+	offs := self.offset - 1 // position of '#'
 	hasCR := false
 
-	if s.ch == '\r' {
+	if self.ch == '\r' {
 		hasCR = true
-	}
 
-	for s.ch != '\n' && s.ch >= 0 {
-		if s.ch == '\r' {
+	}
+	for self.ch != '\n' && self.ch >= 0 {
+		if self.ch == '\r' {
 			hasCR = true
+
 		}
-		s.next()
-	}
+		self.next()
 
-	if offs == s.lineOffset {
-		// comment starts at the beginning of the current line
-		s.interpretLineComment(s.src[offs:s.offset])
 	}
+	if offs == self.lineOffset { // comment starts at the beginning of the current line
+		self.interpretLineComment(self.src[offs:self.offset])
 
-	lit := s.src[offs:s.offset]
+	}
+	lit := self.src[offs:self.offset]
 
 	if hasCR {
 		lit = stripCR(lit)
+
 	}
-
 	return string(lit)
-}
 
+}
 func isLetter(ch rune) bool {
 	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || ch >= 0x80 && unicode.IsLetter(ch)
-}
 
+}
 func isDigit(ch rune) bool {
 	return '0' <= ch && ch <= '9' || ch >= 0x80 && unicode.IsDigit(ch)
-}
 
-func (s *Scanner) scanIdentifier() string {
-	offs := s.offset
-	for isLetter(s.ch) || isDigit(s.ch) {
-		s.next()
+}
+func (self *Scanner) scanIdentifier() string {
+	offs := self.offset
+	for isLetter(self.ch) || isDigit(self.ch) {
+		self.next()
+
 	}
-	return string(s.src[offs:s.offset])
-}
+	return string(self.src[offs:self.offset])
 
+}
 func digitVal(ch rune) int {
 	switch {
 	case '0' <= ch && ch <= '9':
+
 		return int(ch - '0')
+
 	case 'a' <= ch && ch <= 'f':
+
 		return int(ch - 'a' + 10)
+
 	case 'A' <= ch && ch <= 'F':
+
 		return int(ch - 'A' + 10)
+
+
+
 	}
 	return 16 // larger than any legal digit val
 }
+func (self *Scanner) scanMantissa(base int) {
+	for digitVal(self.ch) < base {
+		self.next()
 
-func (s *Scanner) scanMantissa(base int) {
-	for digitVal(s.ch) < base {
-		s.next()
 	}
 }
-
-func (s *Scanner) scanNumber(seenDecimalPoint bool) (token.Token, string) {
-	// digitVal(s.ch) < 10
-	offs := s.offset
+func (self *Scanner) scanNumber(seenDecimalPoint bool) (token.Token, string) { // digitVal(s.ch) < 10
+	offs := self.offset
 	tok := token.INT
 
 	if seenDecimalPoint {
 		offs--
 		tok = token.FLOAT
-		s.scanMantissa(10)
+		self.scanMantissa(10)
 		goto exponent
-	}
 
-	if s.ch == '0' {
-		// int or float
-		offs := s.offset
-		s.next()
-		if s.ch == 'x' || s.ch == 'X' {
-			// hexadecimal int
-			s.next()
-			s.scanMantissa(16)
-			if s.offset-offs <= 2 {
-				// only scanned "0x" or "0X"
-				s.error(offs, "illegal hexadecimal number")
+	}
+	if self.ch == '0' { // int or float
+		offs := self.offset
+		self.next()
+		if self.ch == 'x' || self.ch == 'X' { // hexadecimal int
+			self.next()
+			self.scanMantissa(16)
+			if self.offset-offs <= 2 { // only scanned "0x" or "0X"
+				self.error(offs, "illegal hexadecimal number")
+
 			}
-		} else {
-			// octal int or float
+		} else { // octal int or float
 			seenDecimalDigit := false
-			s.scanMantissa(8)
-			if s.ch == '8' || s.ch == '9' {
-				// illegal octal int or float
+			self.scanMantissa(8)
+			if self.ch == '8' || self.ch == '9' { // illegal octal int or float
 				seenDecimalDigit = true
-				s.scanMantissa(10)
+				self.scanMantissa(10)
+
 			}
-			if s.ch == '.' || s.ch == 'e' || s.ch == 'E' || s.ch == 'i' {
+			if self.ch == '.' || self.ch == 'e' || self.ch == 'E' || self.ch == 'i' {
 				goto fraction
-			}
-			// octal int
+
+			} // octal int
 			if seenDecimalDigit {
-				s.error(offs, "illegal octal number")
+				self.error(offs, "illegal octal number")
+
 			}
 		}
 		goto exit
-	}
 
-	// decimal int or float
-	s.scanMantissa(10)
+	} // decimal int or float
+	self.scanMantissa(10)
 
 fraction:
-	if s.ch == '.' {
+
+	if self.ch == '.' {
 		tok = token.FLOAT
-		s.next()
-		s.scanMantissa(10)
+		self.next()
+		self.scanMantissa(10)
+
 	}
 
 exponent:
-	if s.ch == 'e' || s.ch == 'E' {
-		tok = token.FLOAT
-		s.next()
-		if s.ch == '-' || s.ch == '+' {
-			s.next()
-		}
-		s.scanMantissa(10)
-	}
 
-	if s.ch == 'i' {
+	if self.ch == 'e' || self.ch == 'E' {
+		tok = token.FLOAT
+		self.next()
+		if self.ch == '-' || self.ch == '+' {
+			self.next()
+
+		}
+		self.scanMantissa(10)
+
+	}
+	if self.ch == 'i' {
 		tok = token.IMAG
-		s.next()
+		self.next()
+
 	}
 
 exit:
-	return tok, string(s.src[offs:s.offset])
-}
 
-func (s *Scanner) scanEscape(quote rune) {
-	offs := s.offset
+	return tok, string(self.src[offs:self.offset])
+
+
+
+}
+func (self *Scanner) scanEscape(quote rune) {
+	offs := self.offset
 
 	var i, base, max uint32
-	switch s.ch {
+	switch self.ch {
 	case 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\', quote:
-		s.next()
-		return
-	case '0', '1', '2', '3', '4', '5', '6', '7':
-		i, base, max = 3, 8, 255
-	case 'x':
-		s.next()
-		i, base, max = 2, 16, 255
-	case 'u':
-		s.next()
-		i, base, max = 4, 16, unicode.MaxRune
-	case 'U':
-		s.next()
-		i, base, max = 8, 16, unicode.MaxRune
-	default:
-		s.next() // always make progress
-		s.error(offs, "unknown escape sequence")
-		return
-	}
 
+		self.next()
+		return
+
+	case '0', '1', '2', '3', '4', '5', '6', '7':
+
+		i, base, max = 3, 8, 255
+
+	case 'x':
+
+		self.next()
+		i, base, max = 2, 16, 255
+
+	case 'u':
+
+		self.next()
+		i, base, max = 4, 16, unicode.MaxRune
+
+	case 'U':
+
+		self.next()
+		i, base, max = 8, 16, unicode.MaxRune
+
+	default:
+
+		self.next() // always make progress
+		self.error(offs, "unknown escape sequence")
+		return
+
+
+
+	}
 	var x uint32
-	for ; i > 0 && s.ch != quote && s.ch >= 0; i-- {
-		d := uint32(digitVal(s.ch))
+	for ; i > 0 && self.ch != quote && self.ch >= 0; i-- {
+		d := uint32(digitVal(self.ch))
 		if d >= base {
-			s.error(s.offset, "illegal character in escape sequence")
+			self.error(self.offset, "illegal character in escape sequence")
 			break
+
 		}
 		x = x*base + d
-		s.next()
-	}
-	// in case of an error, consume remaining chars
-	for ; i > 0 && s.ch != quote && s.ch >= 0; i-- {
-		s.next()
+		self.next()
+
+	} // in case of an error, consume remaining chars
+	for ; i > 0 && self.ch != quote && self.ch >= 0; i-- {
+		self.next()
+
 	}
 	if x > max || 0xD800 <= x && x < 0xE000 {
-		s.error(offs, "escape sequence is invalid Unicode code point")
+		self.error(offs, "escape sequence is invalid Unicode code point")
+
 	}
 }
-
-func (s *Scanner) scanChar() string {
-	// '\'' opening already consumed
-	offs := s.offset - 1
+func (self *Scanner) scanChar() string { // '\'' opening already consumed
+	offs := self.offset - 1
 
 	n := 0
-	for s.ch != '\'' {
-		ch := s.ch
+	for self.ch != '\'' {
+		ch := self.ch
 		n++
-		s.next()
+		self.next()
 		if ch == '\n' || ch < 0 {
-			s.error(offs, "character literal not terminated")
+			self.error(offs, "character literal not terminated")
 			n = 1
 			break
+
 		}
 		if ch == '\\' {
-			s.scanEscape('\'')
+			self.scanEscape('\'')
+
 		}
 	}
-
-	s.next()
+	self.next()
 
 	if n != 1 {
-		s.error(offs, "illegal character literal")
+		self.error(offs, "illegal character literal")
+
 	}
+	return string(self.src[offs:self.offset])
 
-	return string(s.src[offs:s.offset])
 }
+func (self *Scanner) scanString() string { // '"' opening already consumed
+	offs := self.offset - 1
 
-func (s *Scanner) scanString() string {
-	// '"' opening already consumed
-	offs := s.offset - 1
-
-	for s.ch != '"' {
-		ch := s.ch
-		s.next()
+	for self.ch != '"' {
+		ch := self.ch
+		self.next()
 		if ch == '\n' || ch < 0 {
-			s.error(offs, "string not terminated")
+			self.error(offs, "string not terminated")
 			break
+
 		}
 		if ch == '\\' {
-			s.scanEscape('"')
+			self.scanEscape('"')
+
 		}
 	}
+	self.next()
 
-	s.next()
+	return string(self.src[offs:self.offset])
 
-	return string(s.src[offs:s.offset])
 }
-
 func stripCR(b []byte) []byte {
 	c := make([]byte, len(b))
 	i := 0
@@ -414,139 +443,146 @@ func stripCR(b []byte) []byte {
 		if ch != '\r' {
 			c[i] = ch
 			i++
+
 		}
 	}
 	return c[:i]
-}
 
-func (s *Scanner) scanRawString() string {
-	// '`' opening already consumed
-	offs := s.offset - 1
+}
+func (self *Scanner) scanRawString() string { // '`' opening already consumed
+	offs := self.offset - 1
 
 	hasCR := false
-	for s.ch != '`' {
-		ch := s.ch
-		s.next()
+	for self.ch != '`' {
+		ch := self.ch
+		self.next()
 		if ch == '\r' {
 			hasCR = true
+
 		}
 		if ch < 0 {
-			s.error(offs, "string not terminated")
+			self.error(offs, "string not terminated")
 			break
+
 		}
 	}
+	self.next()
 
-	s.next()
-
-	lit := s.src[offs:s.offset]
+	lit := self.src[offs:self.offset]
 	if hasCR {
 		lit = stripCR(lit)
+
 	}
-
 	return string(lit)
-}
 
-func (s *Scanner) scanRawString2() string {
-	// '"' opening already consumed
-	offs := s.offset - 1
+}
+func (self *Scanner) scanRawString2() string { // '"' opening already consumed
+	offs := self.offset - 1
 	hasCR := false
 	terminated := false
 
 	// we don't need an if here since the `""` condition was
 	// made in the switch of Scan()
-	s.next() // ""
+	self.next() // ""
 
 	// If are 3 `"`, `"""` it's really a raw string
-	if s.ch == '"' {
-		s.next()
-		for s.ch >= 0 {
-			ch := s.ch
+	if self.ch == '"' {
+		self.next()
+		for self.ch >= 0 {
+			ch := self.ch
 			if ch == '\r' {
 				hasCR = true
+
 			}
-			s.next()
+			self.next()
 			// check if we are at end of comment
-			if ch == '"' && s.ch == '"' {
-				s.next()
-				if s.ch == '"' {
+			if ch == '"' && self.ch == '"' {
+				self.next()
+				if self.ch == '"' {
 					terminated = true
-					s.next()
+					self.next()
 					goto exit
+
 				}
 			}
 		}
-	} else {
-		// we are already good with an empty string
+	} else { // we are already good with an empty string
 		terminated = true
-	}
 
+	}
 	if !terminated {
-		s.error(offs, "string not terminated")
-	}
+		self.error(offs, "string not terminated")
 
+	}
 exit:
-	lit := s.src[offs:s.offset]
+
+	lit := self.src[offs:self.offset]
 	if hasCR {
 		lit = stripCR(lit)
+
 	}
 	return string(lit)
-}
 
-// This allows '\n' since is needed for indenting tracks
-func (s *Scanner) cleanCRLF() {
-	for s.ch == '\n' || s.ch == '\r' {
-		s.next()
+	// This allows '\n' since is needed for indenting tracks
+}
+func (self *Scanner) cleanCRLF() {
+	for self.ch == '\n' || self.ch == '\r' {
+		self.next()
+
 	}
 }
-
-func (s *Scanner) skipWhitespace() {
-	bol := s.offset == s.lineOffset
-	for s.ch == ' ' || s.ch == '\t' {
-		s.next()
+func (self *Scanner) skipWhitespace() {
+	bol := self.offset == self.lineOffset
+	for self.ch == ' ' || self.ch == '\t' {
+		self.next()
 		if bol {
-			s.whiteWidth++
-		}
+			self.whiteWidth++
+
+		} // Helper functions for scanning multi-byte tokens such as >> += >>= .
+		// Different routines recognize different length tok_i based on matches
+		// of ch_i. If a token ends in '=', the result is tok1 or tok3
+		// respectively. Otherwise, the result is tok0 if there was no other
+		// matching character, or tok2 if the matching character was ch2.
 	}
 }
-
-// Helper functions for scanning multi-byte tokens such as >> += >>= .
-// Different routines recognize different length tok_i based on matches
-// of ch_i. If a token ends in '=', the result is tok1 or tok3
-// respectively. Otherwise, the result is tok0 if there was no other
-// matching character, or tok2 if the matching character was ch2.
-
-func (s *Scanner) switch2(tok0, tok1 token.Token) token.Token {
-	if s.ch == '=' {
-		s.next()
+func (self *Scanner) switch2(tok0, tok1 token.Token) token.Token {
+	if self.ch == '=' {
+		self.next()
 		return tok1
+
 	}
 	return tok0
-}
 
-func (s *Scanner) switch3(tok0, tok1 token.Token, ch2 rune, tok2 token.Token) token.Token {
-	if s.ch == '=' {
-		s.next()
+}
+func (self *Scanner) switch3(tok0, tok1 token.Token, ch2 rune, tok2 token.Token) token.Token {
+	if self.ch == '=' {
+		self.next()
 		return tok1
+
 	}
-	if s.ch == ch2 {
-		s.next()
+	if self.ch == ch2 {
+		self.next()
 		return tok2
+
 	}
 	return tok0
-}
 
-func (s *Scanner) switch4(tok0, tok1 token.Token, ch2 rune, tok2, tok3 token.Token) token.Token {
-	if s.ch == '=' {
-		s.next()
+}
+func (self *Scanner) switch4(tok0, tok1 token.Token, ch2 rune, tok2, tok3 token.Token) token.Token {
+	if self.ch == '=' {
+		self.next()
 		return tok1
+
 	}
-	if s.ch == ch2 {
-		s.next()
-		if s.ch == '=' {
-			s.next()
+	if self.ch == ch2 {
+		self.next()
+		if self.ch == '=' {
+			self.next()
 			return tok3
+
 		}
 		return tok2
+
 	}
 	return tok0
 }
@@ -582,241 +618,333 @@ func (s *Scanner) switch4(tok0, tok1 token.Token, ch2 rune, tok2, tok3 token.Tok
 // set with Init. Token positions are relative to that file
 // and thus relative to the file set.
 //
-func (s *Scanner) Scan() (pos token.Pos, tok token.Token, lit string) {
+func (self *Scanner) Scan() (pos token.Pos, tok token.Token, lit string) {
 newLine:
+
 	blankLine := false
 
-	if s.offset == s.lineOffset {
-
+	if self.offset == self.lineOffset {
 		cl := 0 // current level
 
 		for {
-			if s.ch == '\t' {
-				cl += 2 // TODO: use (level/tabsize + 1) * tabsize
-			} else if s.ch == ' ' {
+			if self.ch == '\t' {
+				cl += 2
+			} else if self.ch == ' ' /* TODO: use (level/tabsize + 1) * tabsize  */ {
 				cl++
 			} else {
 				break
-			}
-			s.whiteWidth++
-			s.next()
-		}
 
-		blankLine = s.ch == '\n'
+			}
+			self.whiteWidth++
+			self.next()
+
+		}
+		blankLine = self.ch == '\n'
 
 		// If we are not inside [](){}
 		// Comments '#' or empty lines, should not affect indentation
-		if s.indent.level == 0 && !blankLine && !s.unfinished {
+		if self.indent.level == 0 && !blankLine && !self.unfinished {
 			switch {
-			case cl == s.indent.stack[s.indent.idx]:
+			case cl == self.indent.stack[self.indent.idx]:
 				// noting to do
-			case cl > s.indent.stack[s.indent.idx]:
-				s.indent.idx++
-				s.indent.pendin++
-				s.indent.stack[s.indent.idx] = cl
+			case cl > self.indent.stack[self.indent.idx]:
+
+				self.indent.idx++
+				self.indent.pendin++
+				self.indent.stack[self.indent.idx] = cl
+
 			default:
-				for s.indent.idx > 0 && cl < s.indent.stack[s.indent.idx] {
-					s.indent.pendin--
-					s.indent.idx--
+
+				for self.indent.idx > 0 && cl < self.indent.stack[self.indent.idx] {
+					self.indent.pendin--
+					self.indent.idx--
+
 				}
-				if cl != s.indent.stack[s.indent.idx] {
-					s.error(s.offset, "incosistent indentation")
-				}
+				if cl != self.indent.stack[self.indent.idx] {
+					self.error(self.offset, "incosistent indentation")
+
+				} // current token start
 			}
 		}
 	}
-
-	// current token start
-	pos = s.file.Pos(s.offset)
+	pos = self.file.Pos(self.offset)
 
 	switch {
-	case s.indent.pendin < 0:
-		s.indent.pendin++
+	case self.indent.pendin < 0:
+
+		self.indent.pendin++
 		return pos - 1, token.DEDENT, "}"
-	case s.indent.pendin > 0:
-		s.indent.pendin--
+
+	case self.indent.pendin > 0:
+
+		self.indent.pendin--
 		return pos, token.INDENT, "{"
+
+
+
 	}
 
 scanAgain:
 
-	s.skipWhitespace()
+
+	self.skipWhitespace()
 
 	// determine token value
-	switch ch := s.ch; {
+	switch ch := self.ch; {
 	case isLetter(ch):
-		lit = s.scanIdentifier()
-		if len(lit) > 1 {
-			// keywords are longer than one letter - avoid lookup otherwise
+
+		lit = self.scanIdentifier()
+		if len(lit) > 1 { // keywords are longer than one letter - avoid lookup otherwise
 			tok = token.Lookup(lit)
 			switch tok {
 			case token.CASE, token.DEFAULT:
-				s.unfinished = true
+
+				self.unfinished = true
 				return
+
+
+
 			}
 		} else {
 			tok = token.IDENT
+
 		}
+
 	case '0' <= ch && ch <= '9':
-		tok, lit = s.scanNumber(false)
+
+		tok, lit = self.scanNumber(false)
+
 	default:
-		s.next() // always make progress
+
+		self.next() // always make progress
 		switch ch {
 		case -1:
-			for s.indent.idx > 0 {
-				s.indent.idx--
+
+			for self.indent.idx > 0 {
+				self.indent.idx--
 				return pos, token.DEDENT, "}"
+
 			}
 			tok = token.EOF
+
 		case '\n':
-			if blankLine || s.indent.level > 0 {
+
+			if blankLine || self.indent.level > 0 {
 				goto newLine
+
 			}
-			if s.noSemi {
-				s.noSemi = false
+			if self.noSemi {
+				self.noSemi = false
 				goto newLine
+
 			}
-			if s.unfinished {
+			if self.unfinished {
 				goto newLine
+
 			}
 			return pos, token.SEMICOLON, "\n"
+
 		case '"':
-			if s.ch == '"' {
+
+			if self.ch == '"' {
 				tok = token.STRING
-				lit = s.scanRawString2()
+				lit = self.scanRawString2()
 			} else {
 				tok = token.STRING
-				lit = s.scanString()
+				lit = self.scanString()
+
 			}
+
 		case '\'':
+
 			tok = token.CHAR
-			lit = s.scanChar()
+			lit = self.scanChar()
+
 		case '`':
+
 			tok = token.STRING
-			lit = s.scanRawString()
+			lit = self.scanRawString()
+
 		case ':':
-			tok = s.switch2(token.COLON, token.DEFINE)
+
+			tok = self.switch2(token.COLON, token.DEFINE)
 			if tok == token.DEFINE {
-				s.unfinished = true
+				self.unfinished = true
 				return
+
 			}
+
 		case '.':
-			if '0' <= s.ch && s.ch <= '9' {
-				tok, lit = s.scanNumber(true)
-			} else if s.ch == '.' {
-				s.next()
-				if s.ch == '.' {
-					s.next()
+
+			if '0' <= self.ch && self.ch <= '9' {
+				tok, lit = self.scanNumber(true)
+			} else if self.ch == '.' {
+				self.next()
+				if self.ch == '.' {
+					self.next()
 					tok = token.ELLIPSIS
+
 				}
 			} else {
 				tok = token.PERIOD
+
 			}
+
 		case ',':
+
 			tok = token.COMMA
-			s.unfinished = true
+			self.unfinished = true
 			return
+
 		case ';':
+
 			tok = token.SEMICOLON
 			lit = ";"
+
 		case '(':
-			s.indent.level++
+
+			self.indent.level++
 			tok = token.LPAREN
+
 		case ')':
-			s.indent.level--
+
+			self.indent.level--
 			tok = token.RPAREN
+
 		case '[':
-			s.indent.level++
+
+			self.indent.level++
 			tok = token.LBRACK
+
 		case ']':
-			s.indent.level--
+
+			self.indent.level--
 			tok = token.RBRACK
+
 		case '{':
-			s.indent.level++
+
+			self.indent.level++
 			tok = token.LBRACE
+
 		case '}':
-			s.indent.level--
+
+			self.indent.level--
 			tok = token.RBRACE
+
 		case '+':
-			tok = s.switch3(token.ADD, token.ADD_ASSIGN, '+', token.INC)
-			s.unfinished = tok != token.INC
+
+			tok = self.switch3(token.ADD, token.ADD_ASSIGN, '+', token.INC)
+			self.unfinished = tok != token.INC
 			return
+
 		case '-':
-			tok = s.switch3(token.SUB, token.SUB_ASSIGN, '-', token.DEC)
-			s.unfinished = tok != token.DEC
+
+			tok = self.switch3(token.SUB, token.SUB_ASSIGN, '-', token.DEC)
+			self.unfinished = tok != token.DEC
 			return
+
 		case '*':
-			tok = s.switch2(token.MUL, token.MUL_ASSIGN)
-			s.unfinished = true
+
+			tok = self.switch2(token.MUL, token.MUL_ASSIGN)
+			self.unfinished = true
 			return
+
 		case '#':
 			// comment
-			s.noSemi = s.file.Offset(pos)-s.whiteWidth == s.lineOffset // start a beginning of line
-			lit = s.scanComment()
-			if s.mode&ScanComments == 0 {
-				// skip comment
+			self.noSemi = self.file.Offset(pos)-self.whiteWidth == self.lineOffset // start a beginning of line
+			lit = self.scanComment()
+			if self.mode&ScanComments == 0 { // skip comment
 				goto scanAgain
+
 			}
 			tok = token.COMMENT
 			// Should not affect the status of the 'line'
-			if s.unfinished {
+			if self.unfinished {
 				return
+
 			}
+
 		case '/':
-			tok = s.switch2(token.QUO, token.QUO_ASSIGN)
-			s.unfinished = true
+
+			tok = self.switch2(token.QUO, token.QUO_ASSIGN)
+			self.unfinished = true
 			return
+
 		case '%':
-			tok = s.switch2(token.REM, token.REM_ASSIGN)
-			s.unfinished = true
+
+			tok = self.switch2(token.REM, token.REM_ASSIGN)
+			self.unfinished = true
 			return
+
 		case '^':
-			tok = s.switch2(token.XOR, token.XOR_ASSIGN)
-			s.unfinished = true
+
+			tok = self.switch2(token.XOR, token.XOR_ASSIGN)
+			self.unfinished = true
 			return
+
 		case '<':
-			if s.ch == '-' {
-				s.next()
+
+			if self.ch == '-' {
+				self.next()
 				tok = token.ARROW
 			} else {
-				tok = s.switch4(token.LSS, token.LEQ, '<', token.SHL, token.SHL_ASSIGN)
+				tok = self.switch4(token.LSS, token.LEQ, '<', token.SHL, token.SHL_ASSIGN)
+
 			}
-			s.unfinished = true
+			self.unfinished = true
 			return
+
 		case '>':
-			tok = s.switch4(token.GTR, token.GEQ, '>', token.SHR, token.SHR_ASSIGN)
-			s.unfinished = true
+
+			tok = self.switch4(token.GTR, token.GEQ, '>', token.SHR, token.SHR_ASSIGN)
+			self.unfinished = true
 			return
+
 		case '=':
-			tok = s.switch2(token.ASSIGN, token.EQL)
-			s.unfinished = true
+
+			tok = self.switch2(token.ASSIGN, token.EQL)
+			self.unfinished = true
 			return
+
 		case '!':
-			tok = s.switch2(token.NOT, token.NEQ)
-			s.unfinished = true
+
+			tok = self.switch2(token.NOT, token.NEQ)
+			self.unfinished = true
 			return
+
 		case '&':
-			if s.ch == '^' {
-				s.next()
-				tok = s.switch2(token.AND_NOT, token.AND_NOT_ASSIGN)
+
+			if self.ch == '^' {
+				self.next()
+				tok = self.switch2(token.AND_NOT, token.AND_NOT_ASSIGN)
 			} else {
-				tok = s.switch3(token.AND, token.AND_ASSIGN, '&', token.LAND)
+				tok = self.switch3(token.AND, token.AND_ASSIGN, '&', token.LAND)
+
 			}
-			s.unfinished = true
+			self.unfinished = true
 			return
+
 		case '|':
-			tok = s.switch3(token.OR, token.OR_ASSIGN, '|', token.LOR)
-			s.unfinished = true
+
+			tok = self.switch3(token.OR, token.OR_ASSIGN, '|', token.LOR)
+			self.unfinished = true
 			return
+
 		default:
 			// next reports unexpected BOMs - don't repeat
 			if ch != bom {
-				s.error(s.file.Offset(pos), fmt.Sprintf("illegal character %#U", ch))
+				self.error(self.file.Offset(pos), fmt.Sprintf("illegal character %#U", ch))
+
 			}
 			tok = token.ILLEGAL
 			lit = string(ch)
+
+
+
 		}
+
 	}
-	s.unfinished = false
+	self.unfinished = false
 	return
+
 }

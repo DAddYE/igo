@@ -22,7 +22,11 @@ type FieldFilter func(name string, value reflect.Value) bool
 func NotNilFilter(_ string, v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+
 		return !v.IsNil()
+
+
+
 	}
 	return true
 }
@@ -37,8 +41,7 @@ func NotNilFilter(_ string, v reflect.Value) bool {
 // printed; all others are filtered from the output. Unexported
 // struct fields are never printed.
 //
-func Fprint(w io.Writer, fset *token.FileSet, x interface{}, f FieldFilter) (err error) {
-	// setup printer
+func Fprint(w io.Writer, fset *token.FileSet, x interface{}, f FieldFilter) (err error) { // setup printer
 	p := printer{
 		output: w,
 		fset:   fset,
@@ -51,6 +54,7 @@ func Fprint(w io.Writer, fset *token.FileSet, x interface{}, f FieldFilter) (err
 	defer func() {
 		if e := recover(); e != nil {
 			err = e.(localError).err // re-panics if it's not a localError
+
 		}
 	}()
 
@@ -58,6 +62,7 @@ func Fprint(w io.Writer, fset *token.FileSet, x interface{}, f FieldFilter) (err
 	if x == nil {
 		p.printf("nil\n")
 		return
+
 	}
 	p.print(reflect.ValueOf(x))
 	p.printf("\n")
@@ -69,6 +74,7 @@ func Fprint(w io.Writer, fset *token.FileSet, x interface{}, f FieldFilter) (err
 // Print(fset, x) is the same as Fprint(os.Stdout, fset, x, NotNilFilter).
 func Print(fset *token.FileSet, x interface{}) error {
 	return Fprint(os.Stdout, fset, x, NotNilFilter)
+
 }
 
 type printer struct {
@@ -83,34 +89,38 @@ type printer struct {
 
 var indent = []byte(".  ")
 
-func (p *printer) Write(data []byte) (n int, err error) {
+func (self *printer) Write(data []byte) (n int, err error) {
 	var m int
-	for i, b := range data {
-		// invariant: data[0:n] has been written
+	for i, b := range data { // invariant: data[0:n] has been written
 		if b == '\n' {
-			m, err = p.output.Write(data[n : i+1])
+			m, err = self.output.Write(data[n : i+1])
 			n += m
 			if err != nil {
 				return
+
 			}
-			p.line++
-		} else if p.last == '\n' {
-			_, err = fmt.Fprintf(p.output, "%6d  ", p.line)
+			self.line++
+		} else if self.last == '\n' {
+			_, err = fmt.Fprintf(self.output, "%6d  ", self.line)
 			if err != nil {
 				return
+
 			}
-			for j := p.indent; j > 0; j-- {
-				_, err = p.output.Write(indent)
+			for j := self.indent; j > 0; j-- {
+				_, err = self.output.Write(indent)
 				if err != nil {
 					return
+
 				}
 			}
 		}
-		p.last = b
+		self.last = b
+
 	}
 	if len(data) > n {
-		m, err = p.output.Write(data[n:])
+		m, err = self.output.Write(data[n:])
 		n += m
+
 	}
 	return
 }
@@ -122,130 +132,158 @@ type localError struct {
 }
 
 // printf is a convenience wrapper that takes care of print errors.
-func (p *printer) printf(format string, args ...interface{}) {
-	if _, err := fmt.Fprintf(p, format, args...); err != nil {
+func (self *printer) printf(format string, args ...interface{}) {
+	if _, err := fmt.Fprintf(self, format, args...); err != nil {
 		panic(localError{err})
-	}
+
+	} // Implementation note: Print is written for AST nodes but could be
+	// used to print arbitrary data structures; such a version should
+	// probably be in a different package.
+	//
+	// Note: This code detects (some) cycles created via pointers but
+	// not cycles that are created via slices or maps containing the
+	// same slice or map. Code for general data structures probably
+	// should catch those as well.
 }
-
-// Implementation note: Print is written for AST nodes but could be
-// used to print arbitrary data structures; such a version should
-// probably be in a different package.
-//
-// Note: This code detects (some) cycles created via pointers but
-// not cycles that are created via slices or maps containing the
-// same slice or map. Code for general data structures probably
-// should catch those as well.
-
-func (p *printer) print(x reflect.Value) {
+func (self *printer) print(x reflect.Value) {
 	if !NotNilFilter("", x) {
-		p.printf("nil")
+		self.printf("nil")
 		return
-	}
 
+	}
 	switch x.Kind() {
 	case reflect.Interface:
-		p.print(x.Elem())
+
+		self.print(x.Elem())
+
+
 
 	case reflect.Map:
-		p.printf("%s (len = %d) {", x.Type(), x.Len())
+
+		self.printf("%s (len = %d) {", x.Type(), x.Len())
 		if x.Len() > 0 {
-			p.indent++
-			p.printf("\n")
+			self.indent++
+			self.printf("\n")
 			for _, key := range x.MapKeys() {
-				p.print(key)
-				p.printf(": ")
-				p.print(x.MapIndex(key))
-				p.printf("\n")
+				self.print(key)
+				self.printf(": ")
+				self.print(x.MapIndex(key))
+				self.printf("\n")
+
 			}
-			p.indent--
+			self.indent--
+
 		}
-		p.printf("}")
+		self.printf("}")
+
+
 
 	case reflect.Ptr:
-		p.printf("*")
+
+		self.printf("*")
 		// type-checked ASTs may contain cycles - use ptrmap
 		// to keep track of objects that have been printed
 		// already and print the respective line number instead
 		ptr := x.Interface()
-		if line, exists := p.ptrmap[ptr]; exists {
-			p.printf("(obj @ %d)", line)
+		if line, exists := self.ptrmap[ptr]; exists {
+			self.printf("(obj @ %d)", line)
 		} else {
-			p.ptrmap[ptr] = p.line
-			p.print(x.Elem())
+			self.ptrmap[ptr] = self.line
+			self.print(x.Elem())
+
 		}
 
 	case reflect.Array:
-		p.printf("%s {", x.Type())
+
+		self.printf("%s {", x.Type())
 		if x.Len() > 0 {
-			p.indent++
-			p.printf("\n")
+			self.indent++
+			self.printf("\n")
 			for i, n := 0, x.Len(); i < n; i++ {
-				p.printf("%d: ", i)
-				p.print(x.Index(i))
-				p.printf("\n")
+				self.printf("%d: ", i)
+				self.print(x.Index(i))
+				self.printf("\n")
+
 			}
-			p.indent--
+			self.indent--
+
 		}
-		p.printf("}")
+		self.printf("}")
+
+
 
 	case reflect.Slice:
+
 		if s, ok := x.Interface().([]byte); ok {
-			p.printf("%#q", s)
+			self.printf("%#q", s)
 			return
+
 		}
-		p.printf("%s (len = %d) {", x.Type(), x.Len())
+		self.printf("%s (len = %d) {", x.Type(), x.Len())
 		if x.Len() > 0 {
-			p.indent++
-			p.printf("\n")
+			self.indent++
+			self.printf("\n")
 			for i, n := 0, x.Len(); i < n; i++ {
-				p.printf("%d: ", i)
-				p.print(x.Index(i))
-				p.printf("\n")
+				self.printf("%d: ", i)
+				self.print(x.Index(i))
+				self.printf("\n")
+
 			}
-			p.indent--
+			self.indent--
+
 		}
-		p.printf("}")
+		self.printf("}")
+
+
 
 	case reflect.Struct:
+
 		t := x.Type()
-		p.printf("%s {", t)
-		p.indent++
+		self.printf("%s {", t)
+		self.indent++
 		first := true
-		for i, n := 0, t.NumField(); i < n; i++ {
-			// exclude non-exported fields because their
+		for i, n := 0, t.NumField(); i < n; i++ { // exclude non-exported fields because their
 			// values cannot be accessed via reflection
 			if name := t.Field(i).Name; IsExported(name) {
 				value := x.Field(i)
-				if p.filter == nil || p.filter(name, value) {
+				if self.filter == nil || self.filter(name, value) {
 					if first {
-						p.printf("\n")
+						self.printf("\n")
 						first = false
+
 					}
-					p.printf("%s: ", name)
-					p.print(value)
-					p.printf("\n")
+					self.printf("%s: ", name)
+					self.print(value)
+					self.printf("\n")
+
 				}
 			}
 		}
-		p.indent--
-		p.printf("}")
+		self.indent--
+		self.printf("}")
+
+
 
 	default:
+
 		v := x.Interface()
 		switch v := v.(type) {
 		case string:
 			// print strings in quotes
-			p.printf("%q", v)
+			self.printf("%q", v)
 			return
+
 		case token.Pos:
 			// position values can be printed nicely if we have a file set
-			if p.fset != nil {
-				p.printf("%s", p.fset.Position(v))
+			if self.fset != nil {
+				self.printf("%s", self.fset.Position(v))
 				return
-			}
+
+			} // default
 		}
-		// default
-		p.printf("%v", v)
+		self.printf("%v", v)
+
+
+
 	}
 }

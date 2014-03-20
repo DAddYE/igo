@@ -27,7 +27,9 @@ type Position struct {
 }
 
 // IsValid returns true if the position is valid.
-func (pos *Position) IsValid() bool { return pos.Line > 0 }
+func (self *Position) IsValid() bool {
+	return self.Line > 0
+}
 
 // String returns a string in one of several forms:
 //
@@ -36,16 +38,19 @@ func (pos *Position) IsValid() bool { return pos.Line > 0 }
 //	file                invalid position with file name
 //	-                   invalid position without file name
 //
-func (pos Position) String() string {
-	s := pos.Filename
-	if pos.IsValid() {
+func (self Position) String() string {
+	s := self.Filename
+	if self.IsValid() {
 		if s != "" {
 			s += ":"
+
 		}
-		s += fmt.Sprintf("%d:%d", pos.Line, pos.Column)
+		s += fmt.Sprintf("%d:%d", self.Line, self.Column)
+
 	}
 	if s == "" {
 		s = "-"
+
 	}
 	return s
 }
@@ -80,8 +85,8 @@ type Pos int
 const NoPos Pos = 0
 
 // IsValid returns true if the position is valid.
-func (p Pos) IsValid() bool {
-	return p != NoPos
+func (self Pos) IsValid() bool {
+	return self != NoPos
 }
 
 // -----------------------------------------------------------------------------
@@ -102,25 +107,25 @@ type File struct {
 }
 
 // Name returns the file name of file f as registered with AddFile.
-func (f *File) Name() string {
-	return f.name
+func (self *File) Name() string {
+	return self.name
 }
 
 // Base returns the base offset of file f as registered with AddFile.
-func (f *File) Base() int {
-	return f.base
+func (self *File) Base() int {
+	return self.base
 }
 
 // Size returns the size of file f as registered with AddFile.
-func (f *File) Size() int {
-	return f.size
+func (self *File) Size() int {
+	return self.size
 }
 
 // LineCount returns the number of lines in file f.
-func (f *File) LineCount() int {
-	f.set.mutex.RLock()
-	n := len(f.lines)
-	f.set.mutex.RUnlock()
+func (self *File) LineCount() int {
+	self.set.mutex.RLock()
+	n := len(self.lines)
+	self.set.mutex.RUnlock()
 	return n
 }
 
@@ -128,12 +133,13 @@ func (f *File) LineCount() int {
 // The line offset must be larger than the offset for the previous line
 // and smaller than the file size; otherwise the line offset is ignored.
 //
-func (f *File) AddLine(offset int) {
-	f.set.mutex.Lock()
-	if i := len(f.lines); (i == 0 || f.lines[i-1] < offset) && offset < f.size {
-		f.lines = append(f.lines, offset)
+func (self *File) AddLine(offset int) {
+	self.set.mutex.Lock()
+	if i := len(self.lines); (i == 0 || self.lines[i-1] < offset) && offset < self.size {
+		self.lines = append(self.lines, offset)
+
 	}
-	f.set.mutex.Unlock()
+	self.set.mutex.Unlock()
 }
 
 // SetLines sets the line offsets for a file and returns true if successful.
@@ -144,47 +150,45 @@ func (f *File) AddLine(offset int) {
 // and smaller than the file size; otherwise SetLines fails and returns
 // false.
 //
-func (f *File) SetLines(lines []int) bool {
-	// verify validity of lines table
-	size := f.size
+func (self *File) SetLines(lines []int) bool { // verify validity of lines table
+	size := self.size
 	for i, offset := range lines {
 		if i > 0 && offset <= lines[i-1] || size <= offset {
 			return false
-		}
-	}
 
-	// set lines table
-	f.set.mutex.Lock()
-	f.lines = lines
-	f.set.mutex.Unlock()
+		} // set lines table
+	}
+	self.set.mutex.Lock()
+	self.lines = lines
+	self.set.mutex.Unlock()
 	return true
 }
 
 // SetLinesForContent sets the line offsets for the given file content.
-func (f *File) SetLinesForContent(content []byte) {
+func (self *File) SetLinesForContent(content []byte) {
 	var lines []int
 	line := 0
 	for offset, b := range content {
 		if line >= 0 {
 			lines = append(lines, line)
+
 		}
 		line = -1
 		if b == '\n' {
 			line = offset + 1
-		}
-	}
 
-	// set lines table
-	f.set.mutex.Lock()
-	f.lines = lines
-	f.set.mutex.Unlock()
+		} // set lines table
+	}
+	self.set.mutex.Lock()
+	self.lines = lines
+	self.set.mutex.Unlock()
 }
 
 // A lineInfo object describes alternative file and line number
 // information (such as provided via a //line comment in a .go
 // file) for a given file offset.
-type lineInfo struct {
-	// fields are exported to make them accessible to gob
+type lineInfo struct /* fields are exported to make them accessible to gob  */ 
+{
 	Offset   int
 	Filename string
 	Line     int
@@ -198,83 +202,91 @@ type lineInfo struct {
 // AddLineInfo is typically used to register alternative position
 // information for //line filename:line comments in source files.
 //
-func (f *File) AddLineInfo(offset int, filename string, line int) {
-	f.set.mutex.Lock()
-	if i := len(f.infos); i == 0 || f.infos[i-1].Offset < offset && offset < f.size {
-		f.infos = append(f.infos, lineInfo{offset, filename, line})
+func (self *File) AddLineInfo(offset int, filename string, line int) {
+	self.set.mutex.Lock()
+	if i := len(self.infos); i == 0 || self.infos[i-1].Offset < offset && offset < self.size {
+		self.infos = append(self.infos, lineInfo{offset, filename, line})
+
 	}
-	f.set.mutex.Unlock()
+	self.set.mutex.Unlock()
 }
 
 // Pos returns the Pos value for the given file offset;
 // the offset must be <= f.Size().
 // f.Pos(f.Offset(p)) == p.
 //
-func (f *File) Pos(offset int) Pos {
-	if offset > f.size {
+func (self *File) Pos(offset int) Pos {
+	if offset > self.size {
 		panic("illegal file offset")
+
 	}
-	return Pos(f.base + offset)
+	return Pos(self.base + offset)
 }
 
 // Offset returns the offset for the given file position p;
 // p must be a valid Pos value in that file.
 // f.Offset(f.Pos(offset)) == offset.
 //
-func (f *File) Offset(p Pos) int {
-	if int(p) < f.base || int(p) > f.base+f.size {
+func (self *File) Offset(p Pos) int {
+	if int(p) < self.base || int(p) > self.base+self.size {
 		panic("illegal Pos value")
+
 	}
-	return int(p) - f.base
+	return int(p) - self.base
 }
 
 // Line returns the line number for the given file position p;
 // p must be a Pos value in that file or NoPos.
 //
-func (f *File) Line(p Pos) int {
-	// TODO(gri) this can be implemented much more efficiently
-	return f.Position(p).Line
-}
+func (self *File) Line(p Pos) int { // TODO(gri) this can be implemented much more efficiently
+	return self.Position(p).Line
 
+}
 func searchLineInfos(a []lineInfo, x int) int {
-	return sort.Search(len(a), func(i int) bool { return a[i].Offset > x }) - 1
+	return sort.Search(len(a), func(i int) bool {
+		return a[i].Offset > x
+	}) -
+		1
 }
 
 // info returns the file name, line, and column number for a file offset.
-func (f *File) info(offset int) (filename string, line, column int) {
-	filename = f.name
-	if i := searchInts(f.lines, offset); i >= 0 {
-		line, column = i+1, offset-f.lines[i]+1
+func (self *File) info(offset int) (filename string, line, column int) {
+	filename = self.name
+	if i := searchInts(self.lines, offset); i >= 0 {
+		line, column = i+1, offset-self.lines[i]+1
+
 	}
-	if len(f.infos) > 0 {
-		// almost no files have extra line infos
-		if i := searchLineInfos(f.infos, offset); i >= 0 {
-			alt := &f.infos[i]
+	if len(self.infos) > 0 { // almost no files have extra line infos
+		if i := searchLineInfos(self.infos, offset); i >= 0 {
+			alt := &self.infos[i]
 			filename = alt.Filename
-			if i := searchInts(f.lines, alt.Offset); i >= 0 {
+			if i := searchInts(self.lines, alt.Offset); i >= 0 {
 				line += alt.Line - i - 1
+
 			}
 		}
 	}
 	return
-}
 
-func (f *File) position(p Pos) (pos Position) {
-	offset := int(p) - f.base
+}
+func (self *File) position(p Pos) (pos Position) {
+	offset := int(p) - self.base
 	pos.Offset = offset
-	pos.Filename, pos.Line, pos.Column = f.info(offset)
+	pos.Filename, pos.Line, pos.Column = self.info(offset)
 	return
 }
 
 // Position returns the Position value for the given file position p;
 // p must be a Pos value in that file or NoPos.
 //
-func (f *File) Position(p Pos) (pos Position) {
+func (self *File) Position(p Pos) (pos Position) {
 	if p != NoPos {
-		if int(p) < f.base || int(p) > f.base+f.size {
+		if int(p) < self.base || int(p) > self.base+self.size {
 			panic("illegal Pos value")
+
 		}
-		pos = f.position(p)
+		pos = self.position(p)
+
 	}
 	return
 }
@@ -303,12 +315,11 @@ func NewFileSet() *FileSet {
 // Base returns the minimum base offset that must be provided to
 // AddFile when adding the next file.
 //
-func (s *FileSet) Base() int {
-	s.mutex.RLock()
-	b := s.base
-	s.mutex.RUnlock()
+func (self *FileSet) Base() int {
+	self.mutex.RLock()
+	b := self.base
+	self.mutex.RUnlock()
 	return b
-
 }
 
 // AddFile adds a new file with a given filename, base offset, and file size
@@ -326,66 +337,71 @@ func (s *FileSet) Base() int {
 // For convenience, File.Pos may be used to create file-specific position
 // values from a file offset.
 //
-func (s *FileSet) AddFile(filename string, base, size int) *File {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	if base < s.base || size < 0 {
+func (self *FileSet) AddFile(filename string, base, size int) *File {
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
+	if base < self.base || size < 0 {
 		panic("illegal base or size")
-	}
-	// base >= s.base && size >= 0
-	f := &File{s, filename, base, size, []int{0}, nil}
+
+	} // base >= s.base && size >= 0
+	f := &File{self, filename, base, size, []int{0}, nil}
 	base += size + 1 // +1 because EOF also has a position
 	if base < 0 {
 		panic("token.Pos offset overflow (> 2G of source code in file set)")
-	}
-	// add the file to the file set
-	s.base = base
-	s.files = append(s.files, f)
-	s.last = f
+
+	} // add the file to the file set
+	self.base = base
+	self.files = append(self.files, f)
+	self.last = f
 	return f
 }
 
 // Iterate calls f for the files in the file set in the order they were added
 // until f returns false.
 //
-func (s *FileSet) Iterate(f func(*File) bool) {
+func (self *FileSet) Iterate(f func(*File) bool) {
 	for i := 0; ; i++ {
 		var file *File
-		s.mutex.RLock()
-		if i < len(s.files) {
-			file = s.files[i]
+		self.mutex.RLock()
+		if i < len(self.files) {
+			file = self.files[i]
+
 		}
-		s.mutex.RUnlock()
+		self.mutex.RUnlock()
 		if file == nil || !f(file) {
 			break
+
 		}
 	}
 }
-
 func searchFiles(a []*File, x int) int {
-	return sort.Search(len(a), func(i int) bool { return a[i].base > x }) - 1
-}
+	return sort.Search(len(a), func(i int) bool {
+		return a[i].base > x
+	}) -
+		1
 
-func (s *FileSet) file(p Pos) *File {
-	s.mutex.RLock()
+}
+func (self *FileSet) file(p Pos) *File {
+	self.mutex.RLock()
 	// common case: p is in last file
-	if f := s.last; f != nil && f.base <= int(p) && int(p) <= f.base+f.size {
-		s.mutex.RUnlock()
+	if f := self.last; f != nil && f.base <= int(p) && int(p) <= f.base+f.size {
+		self.mutex.RUnlock()
 		return f
-	}
-	// p is not in last file - search all files
-	if i := searchFiles(s.files, int(p)); i >= 0 {
-		f := s.files[i]
+
+	} // p is not in last file - search all files
+	if i := searchFiles(self.files, int(p)); i >= 0 {
+		f := self.files[i]
 		// f.base <= int(p) by definition of searchFiles
 		if int(p) <= f.base+f.size {
-			s.mutex.RUnlock()
-			s.mutex.Lock()
-			s.last = f // race is ok - s.last is only a cache
-			s.mutex.Unlock()
+			self.mutex.RUnlock()
+			self.mutex.Lock()
+			self.last = f // race is ok - s.last is only a cache
+			self.mutex.Unlock()
 			return f
+
 		}
 	}
-	s.mutex.RUnlock()
+	self.mutex.RUnlock()
 	return nil
 }
 
@@ -393,18 +409,20 @@ func (s *FileSet) file(p Pos) *File {
 // If no such file is found (for instance for p == NoPos),
 // the result is nil.
 //
-func (s *FileSet) File(p Pos) (f *File) {
+func (self *FileSet) File(p Pos) (f *File) {
 	if p != NoPos {
-		f = s.file(p)
+		f = self.file(p)
+
 	}
 	return
 }
 
 // Position converts a Pos in the fileset into a general Position.
-func (s *FileSet) Position(p Pos) (pos Position) {
+func (self *FileSet) Position(p Pos) (pos Position) {
 	if p != NoPos {
-		if f := s.file(p); f != nil {
+		if f := self.file(p); f != nil {
 			pos = f.position(p)
+
 		}
 	}
 	return
@@ -413,8 +431,7 @@ func (s *FileSet) Position(p Pos) (pos Position) {
 // -----------------------------------------------------------------------------
 // Helper functions
 
-func searchInts(a []int, x int) int {
-	// This function body is a manually inlined version of:
+func searchInts(a []int, x int) int { // This function body is a manually inlined version of:
 	//
 	//   return sort.Search(len(a), func(i int) bool { return a[i] > x }) - 1
 	//
@@ -431,6 +448,7 @@ func searchInts(a []int, x int) int {
 			i = h + 1
 		} else {
 			j = h
+
 		}
 	}
 	return i - 1
