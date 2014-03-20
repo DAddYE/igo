@@ -322,8 +322,8 @@ func *parser.errorExpected(pos token.Pos, msg string)
 			if self.tok.IsLiteral()
 				msg += " " + self.lit
 
-	panic(fmt.Sprintf("%s %s", self.file.Position(pos), msg))
-	# p.error(pos, msg)
+	# panic(fmt.Sprintf("%s %s", self.file.Position(pos), msg))
+	p.error(pos, msg)
 
 func *parser.expect(tok token.Token) token.Pos
 	pos := self.pos
