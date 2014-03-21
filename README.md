@@ -10,6 +10,8 @@ an easily swap with the original one.
 
 ### How it works?
 
+You can [TRY IT ONLINE](http://igo.herokuapp.com) or with the `cli`:
+
 ```
 usage: igo [compile|parse|build] [flags] [path ...]
   -comments=true: print comments
