@@ -112,6 +112,11 @@ Just browse `*.igo` files, but soon I'll make a `ebnf` notation.
 Pretty much really few thins, `golang` itself is almost perfect, this parser will allow you to skip
 some annoyance. Nothing more.
 
+### Editors
+
+- [Vim](https://github.com/DAddYE/igo.vim)
+- add yours ...
+
 ### What's left?
 
 In my roadmap there is:
