@@ -6,6 +6,15 @@ Most of the code comes directly from the standard library of `pkg/go` however th
 and `scanner` has been heavily modified, the *igo* `ast` instead is pretty much unchanged to allow
 an easily swap with the original one.
 
+The __aim__ of this project is to provide an alternative `go fmt` which means the you will be able
+to write as you _like_ and then distribute in the standard __go way__ (`*.go formatted files`).
+
+For those who may wonder, the next step will provide a 1:1 line:column error reporting integrated
+with `go build`.
+
+This project was heavily influenced by the beauty [Nimrod](http://nimrod-lang.org) which I highly
+suggest to [try](http://nimrod-lang.org).
+
 **It's in alpha stage**
 
 ### How it works?
