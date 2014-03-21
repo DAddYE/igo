@@ -229,7 +229,7 @@ func *File.Line(p Pos) int
 func searchLineInfos(a []lineInfo, x int) int
 	return sort.Search(len(a)) do(i int) bool
 		return a[i].Offset > x
-	 - 1
+	- 1
 
 # info returns the file name, line, and column number for a file offset.
 func *File.info(offset int) (filename string, line, column int)
@@ -350,15 +350,10 @@ func *FileSet.Iterate(f func(*File) bool)
 		if file == nil || !f(file)
 			break
 
-
-
-
-
-
 func searchFiles(a []*File, x int) int
 	return sort.Search(len(a)) do(i int) bool
 		return a[i].base > x
-	 - 1
+	- 1
 
 
 func *FileSet.file(p Pos) *File
@@ -378,9 +373,6 @@ func *FileSet.file(p Pos) *File
 			self.last = f # race is ok - s.last is only a cache
 			self.mutex.Unlock()
 			return f
-
-
-
 
 	self.mutex.RUnlock()
 	return nil

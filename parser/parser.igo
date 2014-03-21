@@ -1911,6 +1911,7 @@ func *parser.parseIfStmt() *ast.IfStmt
 	var s ast.Stmt
 	var x ast.Expr
 
+	do
 		prevLev := self.exprLev
 		self.exprLev = -1
 		if self.tok == token.SEMICOLON && !self.isIndent()
