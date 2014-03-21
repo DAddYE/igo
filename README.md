@@ -109,7 +109,7 @@ Just browse `*.igo` files, but soon I'll make a `ebnf` notation.
 
 ### What will change?
 
-Pretty much really few thins, `golang` itself is almost perfect, this parser will allow you to skip
+Pretty much really few things, `golang` itself is almost perfect, this parser will allow you to skip
 some annoyance. Nothing more.
 
 ### Editors
