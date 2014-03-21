@@ -375,8 +375,8 @@ func (p *parser) errorExpected(pos token.Pos, msg string) {
 			}
 		}
 	}
-	panic(fmt.Sprintf("%s %s", p.file.Position(pos), msg))
-	// p.error(pos, msg)
+	// panic(fmt.Sprintf("%s %s", p.file.Position(pos), msg))
+	p.error(pos, msg)
 }
 
 func (p *parser) expect(tok token.Token) token.Pos {
