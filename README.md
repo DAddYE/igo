@@ -39,7 +39,7 @@ Note that `build` currently is not yet implemented.
 import
 	"bytes"
 	"fmt"
-	"github.com/daddye/igo/from_go"
+	"github.com/DAddYE/igo/from_go"
 	"go/parser"
 	"go/token"
 	"io/ioutil"
@@ -79,9 +79,9 @@ func ExampleFromGo()
 import
 	"bytes"
 	"fmt"
-	"github.com/daddye/igo/parser"
-	"github.com/daddye/igo/to_go"
-	"github.com/daddye/igo/token"
+	"github.com/DAddYE/igo/parser"
+	"github.com/DAddYE/igo/to_go"
+	"github.com/DAddYE/igo/token"
 	"io/ioutil"
 	"log"
 	"testing"
