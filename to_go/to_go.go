@@ -7,14 +7,15 @@ package to_go
 
 import (
 	"fmt"
-	"github.com/DAddYE/igo/ast"
-	"github.com/DAddYE/igo/token"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 	"unicode"
+
+	"github.com/DAddYE/igo/ast"
+	"github.com/DAddYE/igo/token"
 )
 
 const (
@@ -62,9 +63,10 @@ type printer struct {
 	// white space). If there's a difference and SourcePos is set in
 	// ConfigMode, //line comments are used in the output to restore
 	// original source positions for a reader.
-	pos  token.Position // current position in AST (source) space
-	out  token.Position // current position in output space
-	last token.Position // value of pos after calling writeString
+	pos       token.Position                    // current position in AST (source) space
+	out       token.Position                    // current position in output space
+	last      token.Position                    // value of pos after calling writeString
+	Positions map[token.Position]token.Position // history of all positions
 
 	// The list of all source comments, in order of appearance.
 	comments        []*ast.CommentGroup // may be nil
@@ -89,6 +91,7 @@ func (p *printer) init(cfg *Config, fset *token.FileSet, nodeSizes map[ast.Node]
 	p.fset = fset
 	p.pos = token.Position{Line: 1, Column: 1}
 	p.out = token.Position{Line: 1, Column: 1}
+	p.Positions = make(map[token.Position]token.Position)
 	p.wsbuf = make([]whiteSpace, 0, 16) // whitespace sequences are short
 	p.nodeSizes = nodeSizes
 	p.cachedPos = -1
@@ -175,6 +178,7 @@ func (p *printer) atLineBegin(pos token.Position) {
 	p.pos.Offset += n
 	p.pos.Column += n
 	p.out.Column += n
+	p.Positions[p.pos] = p.out
 }
 
 // writeByte writes ch n times to p.output and updates p.pos.
@@ -198,6 +202,7 @@ func (p *printer) writeByte(ch byte, n int) {
 	}
 	p.pos.Column += n
 	p.out.Column += n
+	p.Positions[p.pos] = p.out
 }
 
 // writeString writes the string s to p.output and updates p.pos, p.out,
@@ -263,6 +268,7 @@ func (p *printer) writeString(pos token.Position, s string, isLit bool) {
 		p.output = append(p.output, tabwriter.Escape)
 	}
 
+	p.Positions[p.pos] = p.out
 	p.last = p.pos
 }
 
@@ -447,7 +453,7 @@ func (p *printer) writeComment(comment *ast.Comment, prefix string) {
 			}
 		}
 	}
-	
+
 	t := trimRight(text[1:])
 
 	// shortcut common case of //-style comments
@@ -459,7 +465,7 @@ func (p *printer) writeComment(comment *ast.Comment, prefix string) {
 		prefix = " " + prefix
 	}
 
-	p.writeString(pos, prefix + t + suffix, true)
+	p.writeString(pos, prefix+t+suffix, true)
 }
 
 // writeCommentSuffix writes a line break after a comment if indicated
@@ -527,7 +533,7 @@ func (p *printer) intersperseComments(next token.Position, tok token.Token) (wro
 		// ensure that there is a line break after a //-style comment,
 		// before a closing '}' ')' unless explicitly disabled, or at eof
 		needsLinebreak :=
-				tok == token.RBRACE && p.mode&noExtraLinebreak == 0 ||
+			tok == token.RBRACE && p.mode&noExtraLinebreak == 0 ||
 				tok == token.RPAREN && p.mode&noExtraLinebreak == 0 ||
 				tok == token.EOF
 		return p.writeCommentSuffix(needsLinebreak)
@@ -1001,9 +1007,8 @@ type Config struct {
 }
 
 // fprint implements Fprint and takes a nodesSizes map for setting up the printer state.
-func (cfg *Config) fprint(output io.Writer, fset *token.FileSet, node interface{}, nodeSizes map[ast.Node]int) (err error) {
+func (cfg *Config) fprint(output io.Writer, fset *token.FileSet, node interface{}, nodeSizes map[ast.Node]int) (p printer, err error) {
 	// print node
-	var p printer
 	p.init(cfg, fset, nodeSizes)
 	if err = p.printNode(node); err != nil {
 		return
@@ -1062,13 +1067,13 @@ type CommentedNode struct {
 // The node type must be *ast.File, *CommentedNode, []ast.Decl, []ast.Stmt,
 // or assignment-compatible to ast.Expr, ast.Decl, ast.Spec, or ast.Stmt.
 //
-func (cfg *Config) Fprint(output io.Writer, fset *token.FileSet, node interface{}) error {
+func (cfg *Config) Fprint(output io.Writer, fset *token.FileSet, node interface{}) (printer, error) {
 	return cfg.fprint(output, fset, node, make(map[ast.Node]int))
 }
 
 // Fprint "pretty-prints" an AST node to output.
 // It calls Config.Fprint with default settings.
 //
-func Fprint(output io.Writer, fset *token.FileSet, node interface{}) error {
+func Fprint(output io.Writer, fset *token.FileSet, node interface{}) (printer, error) {
 	return (&Config{Tabwidth: 8}).Fprint(output, fset, node)
 }

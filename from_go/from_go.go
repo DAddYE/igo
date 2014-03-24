@@ -9,13 +9,14 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	iToken "github.com/DAddYE/igo/token"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 	"unicode"
+
+	iToken "github.com/DAddYE/igo/token"
 )
 
 const (
@@ -86,7 +87,7 @@ type printer struct {
 	cachedLine int // line corresponding to cachedPos
 
 	// Set the function scope to allow identifier change
-	rcvName *ast.Ident     // the name of the receiver
+	rcvName *ast.Ident // the name of the receiver
 }
 
 func (p *printer) init(cfg *Config, fset *token.FileSet, nodeSizes map[ast.Node]int) {

@@ -10,9 +10,10 @@ package to_go
 
 import (
 	"bytes"
+	"unicode/utf8"
+
 	"github.com/DAddYE/igo/ast"
 	"github.com/DAddYE/igo/token"
-	"unicode/utf8"
 )
 
 // Formatting issues:
@@ -1427,7 +1428,7 @@ func (p *printer) nodeSize(n ast.Node, maxSize int) (size int) {
 	// in RawFormat
 	cfg := Config{Mode: RawFormat}
 	var buf bytes.Buffer
-	if err := cfg.fprint(&buf, p.fset, n, p.nodeSizes); err != nil {
+	if _, err := cfg.fprint(&buf, p.fset, n, p.nodeSizes); err != nil {
 		return
 	}
 	if buf.Len() <= maxSize {
