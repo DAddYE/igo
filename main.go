@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
+	"runtime"
 	"strings"
 
 	"github.com/DAddYE/igo/cmd"
@@ -68,14 +70,14 @@ func main() {
 	case BUILD:
 		exitCode = cmd.To(cmd.GO, paths)
 		if exitCode == 0 {
-			fmt.Printf("%+#v", cmd.IgoPositions)
-			out, err := exec.Command("go build").CombinedOutput()
-			fmt.Println(out)
-			fmt.Printf("%v\n", err)
+			gocmd := path.Join(runtime.GOROOT(), "bin", "go")
+			fmt.Println("Building...")
+			out, err := exec.Command(gocmd, "build").CombinedOutput()
 			if err != nil {
+				os.Stderr.Write(out)
+				fmt.Printf("%v\n", err)
 			}
 		}
-
 	default:
 		fmt.Fprintln(os.Stderr, "Invalid command")
 		usage()
