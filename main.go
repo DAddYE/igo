@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/DAddYE/igo/cmd"
@@ -20,12 +21,12 @@ const (
 
 var commands = []string{
 	COMPILE: "compile",
-	PARSE: "parse",
-	BUILD: "build",
+	PARSE:   "parse",
+	BUILD:   "build",
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: igo [" + strings.Join(commands[1:], "|") + "] [flags] [path ...]\n")
+	fmt.Fprintf(os.Stderr, "usage: igo ["+strings.Join(commands[1:], "|")+"] [flags] [path ...]\n")
 	flag.PrintDefaults()
 	os.Exit(2)
 }
@@ -44,8 +45,8 @@ func main() {
 	flag.Parse()
 
 	var (
-		command Cmd
-		paths []string
+		command  Cmd
+		paths    []string
 		exitCode = 0
 	)
 
@@ -64,6 +65,17 @@ func main() {
 		exitCode = cmd.To(cmd.IGO, paths)
 	case COMPILE:
 		exitCode = cmd.To(cmd.GO, paths)
+	case BUILD:
+		exitCode = cmd.To(cmd.GO, paths)
+		if exitCode == 0 {
+			fmt.Printf("%+#v", cmd.IgoPositions)
+			out, err := exec.Command("go build").CombinedOutput()
+			fmt.Println(out)
+			fmt.Printf("%v\n", err)
+			if err != nil {
+			}
+		}
+
 	default:
 		fmt.Fprintln(os.Stderr, "Invalid command")
 		usage()

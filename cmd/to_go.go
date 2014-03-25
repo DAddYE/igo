@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	igoPositions   = make(map[string]*printer.Positions)
+	IgoPositions   = make(map[string]*printer.Positions)
 	igoFileSet     = token.NewFileSet() // per process FileSet
 	igoParserMode  parser.Mode
 	igoPrinterMode printer.Mode
@@ -69,7 +69,7 @@ func igoProcessFile(filename string, in io.Reader, out io.Writer) error {
 		return err
 	}
 
-	igoPositions[filename] = pos
+	IgoPositions[filename] = pos
 
 	res := buf.Bytes()
 	if adjust != nil {

@@ -55,10 +55,6 @@ func To(m Mode, paths []string) int {
 		}
 	}
 
-	if m == IGO {
-		fmt.Printf("%+#v", igoPositions)
-	}
-
 	return exitCode
 }
 
