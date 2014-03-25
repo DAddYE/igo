@@ -38,8 +38,7 @@ func To(m Mode, paths []string) int {
 		goInitParserMode()
 		goInitPrinterMode()
 	} else {
-		igoInitParserMode()
-		igoInitPrinterMode()
+		igoInit()
 	}
 
 	// If we don't want to process a single file or directory,
@@ -54,6 +53,10 @@ func To(m Mode, paths []string) int {
 		} else {
 			igoWalkPath(path)
 		}
+	}
+
+	if m == IGO {
+		fmt.Printf("%+#v", igoPositions)
 	}
 
 	return exitCode

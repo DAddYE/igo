@@ -43,6 +43,8 @@ const (
 	noExtraLinebreak pmode = 1 << iota
 )
 
+type Positions map[token.Position]token.Position
+
 type printer struct {
 	// Configuration (does not change after initialization)
 	Config
@@ -63,10 +65,10 @@ type printer struct {
 	// white space). If there's a difference and SourcePos is set in
 	// ConfigMode, //line comments are used in the output to restore
 	// original source positions for a reader.
-	pos       token.Position                    // current position in AST (source) space
-	out       token.Position                    // current position in output space
-	last      token.Position                    // value of pos after calling writeString
-	Positions map[token.Position]token.Position // history of all positions
+	pos       token.Position // current position in AST (source) space
+	out       token.Position // current position in output space
+	last      token.Position // value of pos after calling writeString
+	Positions                // history of all positions
 
 	// The list of all source comments, in order of appearance.
 	comments        []*ast.CommentGroup // may be nil
@@ -1007,9 +1009,11 @@ type Config struct {
 }
 
 // fprint implements Fprint and takes a nodesSizes map for setting up the printer state.
-func (cfg *Config) fprint(output io.Writer, fset *token.FileSet, node interface{}, nodeSizes map[ast.Node]int) (p printer, err error) {
+func (cfg *Config) fprint(output io.Writer, fset *token.FileSet, node interface{}, nodeSizes map[ast.Node]int) (pos *Positions, err error) {
 	// print node
+	var p printer
 	p.init(cfg, fset, nodeSizes)
+	pos = &p.Positions
 	if err = p.printNode(node); err != nil {
 		return
 	}
@@ -1067,13 +1071,13 @@ type CommentedNode struct {
 // The node type must be *ast.File, *CommentedNode, []ast.Decl, []ast.Stmt,
 // or assignment-compatible to ast.Expr, ast.Decl, ast.Spec, or ast.Stmt.
 //
-func (cfg *Config) Fprint(output io.Writer, fset *token.FileSet, node interface{}) (printer, error) {
+func (cfg *Config) Fprint(output io.Writer, fset *token.FileSet, node interface{}) (*Positions, error) {
 	return cfg.fprint(output, fset, node, make(map[ast.Node]int))
 }
 
 // Fprint "pretty-prints" an AST node to output.
 // It calls Config.Fprint with default settings.
 //
-func Fprint(output io.Writer, fset *token.FileSet, node interface{}) (printer, error) {
+func Fprint(output io.Writer, fset *token.FileSet, node interface{}) (*Positions, error) {
 	return (&Config{Tabwidth: 8}).Fprint(output, fset, node)
 }

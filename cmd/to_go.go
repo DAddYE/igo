@@ -18,6 +18,7 @@ import (
 )
 
 var (
+	igoPositions   = make(map[string]*printer.Positions)
 	igoFileSet     = token.NewFileSet() // per process FileSet
 	igoParserMode  parser.Mode
 	igoPrinterMode printer.Mode
@@ -28,15 +29,12 @@ func igoReport(err error) {
 	exitCode = 2
 }
 
-func igoInitParserMode() {
+func igoInit() {
 	igoParserMode = parser.Mode(0)
 	if *comments {
 		igoParserMode |= parser.ParseComments
 	}
 	igoParserMode |= parser.AllErrors
-}
-
-func igoInitPrinterMode() {
 	igoPrinterMode = printer.UseSpaces
 	if *tabIndent {
 		igoPrinterMode |= printer.TabIndent
@@ -65,10 +63,14 @@ func igoProcessFile(filename string, in io.Reader, out io.Writer) error {
 	ast.SortImports(igoFileSet, file)
 
 	var buf bytes.Buffer
-	err = (&printer.Config{Mode: igoPrinterMode, Tabwidth: *tabWidth}).Fprint(&buf, igoFileSet, file)
+	var pos *printer.Positions
+	pos, err = (&printer.Config{Mode: igoPrinterMode, Tabwidth: *tabWidth}).Fprint(&buf, igoFileSet, file)
 	if err != nil {
 		return err
 	}
+
+	igoPositions[filename] = pos
+
 	res := buf.Bytes()
 	if adjust != nil {
 		res = adjust(src, res)
@@ -110,7 +112,8 @@ func igoWalkPath(path string) {
 	case dir.IsDir():
 		filepath.Walk(path, igoVisitFile)
 	default:
-		if err := igoProcessFile(path, nil, os.Stdout); err != nil {
+		err := igoProcessFile(path, nil, os.Stdout)
+		if err != nil {
 			igoReport(err)
 		}
 	}
