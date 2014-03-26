@@ -20,7 +20,7 @@ var (
 	comments  = flag.Bool("comments", true, "print comments")
 	tabWidth  = flag.Int("tabwidth", 8, "tab width")
 	tabIndent = flag.Bool("tabs", true, "indent with tabs")
-	destDir   = flag.String("dest", "", "destination directory")
+	DestDir   = flag.String("dest", "", "destination directory")
 
 	// ExitCode
 	exitCode = 0
@@ -59,7 +59,7 @@ func To(m Mode, paths []string) int {
 }
 
 func createDir(file string) {
-	if *destDir == "" {
+	if *DestDir == "" {
 		return
 	}
 

@@ -23,12 +23,16 @@ const (
 	COMPILE
 	PARSE
 	BUILD
+	RUN
+	TEST
 )
 
 var commands = []string{
 	COMPILE: "compile",
 	PARSE:   "parse",
 	BUILD:   "build",
+	RUN:     "run",
+	TEST:    "test",
 }
 
 func usage() {
@@ -120,13 +124,13 @@ func main() {
 		exitCode = cmd.To(cmd.IGO, paths)
 	case COMPILE:
 		exitCode = cmd.To(cmd.GO, paths)
-	case BUILD:
+	case BUILD, RUN, TEST:
 		exitCode = cmd.To(cmd.GO, paths)
 		if exitCode == 0 {
 			gocmd := path.Join(runtime.GOROOT(), "bin", "go")
-			out, err := exec.Command(gocmd, "build").CombinedOutput()
+			os.Chdir(*cmd.DestDir)
+			out, err := exec.Command(gocmd, commands[command]).CombinedOutput()
 			if err != nil {
-				// os.Stderr.Write(out)
 				parseError(out)
 				exitCode = 1
 			}
@@ -135,6 +139,5 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Invalid command")
 		usage()
 	}
-
 	os.Exit(exitCode)
 }

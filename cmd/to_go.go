@@ -76,8 +76,8 @@ func igoProcessFile(filename string, in io.Reader, out io.Writer) error {
 		res = adjust(src, res)
 	}
 
-	if *destDir != "" {
-		dest = filepath.Join(*destDir, dest)
+	if *DestDir != "" {
+		dest = filepath.Join(*DestDir, dest)
 		createDir(dest)
 	}
 
