@@ -132,7 +132,7 @@ In my roadmap there is:
 
 ### Other info
 
-This project was heavily influenced partially by [Nimrod](http://nimrod-lang.org) which I highly
+This project was partially influenced by [Nimrod](http://nimrod-lang.org) which I highly
 suggest to [try](http://nimrod-lang.org).
 
 ### License MIT/BSD-style
