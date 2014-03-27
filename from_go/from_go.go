@@ -58,6 +58,7 @@ type printer struct {
 	wsbuf       []whiteSpace // delayed white space
 	findent     int          // function indentation idx
 	inFunc      bool         // track if we are in a function call
+	consBrakes  int          // track consecutive line breaks
 
 	// Positions
 	// The out position differs from the pos position when the result
@@ -196,12 +197,14 @@ func (p *printer) writeByte(ch byte, n int) {
 	// update positions
 	p.pos.Offset += n
 	if ch == '\n' || ch == '\f' {
+		p.consBrakes++
 		p.pos.Line += n
 		p.out.Line += n
 		p.pos.Column = 1
 		p.out.Column = 1
 		return
 	}
+	p.consBrakes = 0
 	p.pos.Column += n
 	p.out.Column += n
 }
@@ -616,6 +619,10 @@ func (p *printer) writeWhitespace(n int) {
 				p.indent = 0
 			}
 		case newline, formfeed:
+			if p.consBrakes >= maxNewlines {
+				continue
+			}
+
 			// A line break immediately followed by a "correcting"
 			// unindent is swapped with the unindent - this permits
 			// proper label positioning. If a comment is between
