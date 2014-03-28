@@ -586,6 +586,9 @@ func (s *Scanner) Scan() (pos token.Pos, tok token.Token, lit string) {
 newLine:
 	blankLine := false
 
+	// previous token start
+	pos = s.file.Pos(s.offset)
+
 	if s.offset == s.lineOffset {
 
 		cl := 0 // current level
@@ -626,17 +629,18 @@ newLine:
 		}
 	}
 
-	// current token start
-	pos = s.file.Pos(s.offset)
-
 	switch {
 	case s.indent.pendin < 0:
 		s.indent.pendin++
 		return pos - 1, token.DEDENT, "}"
+
 	case s.indent.pendin > 0:
 		s.indent.pendin--
-		return pos, token.INDENT, "{"
+		return pos - 1, token.INDENT, "{"
 	}
+
+	// current token start
+	pos = s.file.Pos(s.offset)
 
 scanAgain:
 

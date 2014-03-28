@@ -11,12 +11,13 @@ package parser
 
 import (
 	"fmt"
-	"github.com/DAddYE/igo/ast"
-	"github.com/DAddYE/igo/scanner"
-	"github.com/DAddYE/igo/token"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/DAddYE/igo/ast"
+	"github.com/DAddYE/igo/scanner"
+	"github.com/DAddYE/igo/token"
 )
 
 // The parser structure holds the parser's internal state.
@@ -1142,12 +1143,11 @@ func (p *parser) parseBlockStmt() *ast.BlockStmt {
 		p.openScope()
 		list := []ast.Stmt{p.parseSmallStmt()}
 		p.closeScope()
-		pos := p.pos
 		p.expectSemi()
+		pos := p.pos
 		return &ast.BlockStmt{Opening: colon, List: list, Closing: pos, Small: true}
 	} else {
 		p.expectSemi()
-
 		switch {
 		case p.tok == token.INDENT:
 			indent := p.expect(token.INDENT)
@@ -2465,9 +2465,9 @@ func (p *parser) parseFuncDecl() *ast.FuncDecl {
 	// *T.ident
 	if p.tok == token.MUL {
 		star := p.expect(token.MUL)
-		typ  := p.parseIdent()
+		typ := p.parseIdent()
 		expr := &ast.StarExpr{Star: star, X: typ}
-		recv  = p.parseReceiver(expr, scope)
+		recv = p.parseReceiver(expr, scope)
 		p.expect(token.PERIOD)
 		ident = p.parseIdent()
 	} else {

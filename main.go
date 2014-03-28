@@ -123,12 +123,13 @@ func main() {
 	case PARSE:
 		exitCode = cmd.To(cmd.IGO, paths)
 	case COMPILE:
+		os.Chdir(*cmd.DestDir)
 		exitCode = cmd.To(cmd.GO, paths)
 	case BUILD, RUN, TEST:
+		os.Chdir(*cmd.DestDir)
 		exitCode = cmd.To(cmd.GO, paths)
 		if exitCode == 0 {
 			gocmd := path.Join(runtime.GOROOT(), "bin", "go")
-			os.Chdir(*cmd.DestDir)
 			out, err := exec.Command(gocmd, commands[command]).CombinedOutput()
 			if err != nil {
 				parseError(out)

@@ -10,10 +10,11 @@ package from_go
 
 import (
 	"bytes"
-	iToken "github.com/DAddYE/igo/token"
 	"go/ast"
 	"go/token"
 	"unicode/utf8"
+
+	iToken "github.com/DAddYE/igo/token"
 )
 
 // Formatting issues:
@@ -1057,7 +1058,7 @@ func (p *printer) indentList(list []ast.Expr) bool {
 	return false
 }
 
-func (p *printer) alignFuncIndent(){
+func (p *printer) alignFuncIndent() {
 	p.flush(p.pos, p.lastTok)
 	i := p.indent
 	for ; i < p.findent; i++ {

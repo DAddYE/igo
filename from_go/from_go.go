@@ -187,6 +187,7 @@ func (p *printer) atLineBegin(pos token.Position) {
 // writeByte writes ch n times to p.output and updates p.pos.
 func (p *printer) writeByte(ch byte, n int) {
 	if p.out.Column == 1 {
+		p.consBrakes++
 		p.atLineBegin(p.pos)
 	}
 
@@ -197,7 +198,6 @@ func (p *printer) writeByte(ch byte, n int) {
 	// update positions
 	p.pos.Offset += n
 	if ch == '\n' || ch == '\f' {
-		p.consBrakes++
 		p.pos.Line += n
 		p.out.Line += n
 		p.pos.Column = 1
@@ -222,6 +222,7 @@ func (p *printer) writeByte(ch byte, n int) {
 //
 func (p *printer) writeString(pos token.Position, s string, isLit bool) {
 	if p.out.Column == 1 {
+		p.consBrakes++
 		p.atLineBegin(pos)
 	}
 
@@ -264,6 +265,7 @@ func (p *printer) writeString(pos token.Position, s string, isLit bool) {
 		p.pos.Column = c
 		p.out.Column = c
 	} else {
+		p.consBrakes = 0
 		p.pos.Column += len(s)
 		p.out.Column += len(s)
 	}
@@ -619,10 +621,9 @@ func (p *printer) writeWhitespace(n int) {
 				p.indent = 0
 			}
 		case newline, formfeed:
-			if p.consBrakes >= maxNewlines {
+			if p.consBrakes > 0 {
 				continue
 			}
-
 			// A line break immediately followed by a "correcting"
 			// unindent is swapped with the unindent - this permits
 			// proper label positioning. If a comment is between

@@ -928,7 +928,7 @@ func (p *printer) block(b *ast.BlockStmt, nindent int) {
 	p.stmtList(b.List, nindent, true)
 	p.linebreak(p.lineFor(b.Closing), 1, ignore, true)
 	if !noBrace {
-		p.print(b.Closing, token.RBRACE)
+		p.print(b.Closing-1, token.RBRACE)
 	}
 }
 

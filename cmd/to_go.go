@@ -76,10 +76,7 @@ func igoProcessFile(filename string, in io.Reader, out io.Writer) error {
 		res = adjust(src, res)
 	}
 
-	if *DestDir != "" {
-		dest = filepath.Join(*DestDir, dest)
-		createDir(dest)
-	}
+	createDir(filepath.Join(*DestDir, dest))
 
 	err = ioutil.WriteFile(dest, res, 0644)
 	if err != nil {
