@@ -537,8 +537,7 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 			for
 				if self.ch == '\t'
 					cl += 2
-				else # TODO: use (level/tabsize + 1) * tabsize
-				if self.ch == ' '
+				else if self.ch == ' ' # TODO: use (level/tabsize + 1) * tabsize
 					cl++
 				else
 					break
