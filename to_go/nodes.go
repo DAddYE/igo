@@ -922,12 +922,15 @@ func (p *printer) block(b *ast.BlockStmt, nindent int) {
 	if noBrace {
 		nindent = 0
 		p.noBrace = false
+		p.print(b.Opening)
 	} else {
 		p.print(b.Opening, token.LBRACE)
 	}
 	p.stmtList(b.List, nindent, true)
 	p.linebreak(p.lineFor(b.Closing), 1, ignore, true)
-	if !noBrace {
+	if noBrace {
+		p.print(b.Closing)
+	} else {
 		p.print(b.Closing-1, token.RBRACE)
 	}
 }
