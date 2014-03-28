@@ -9,11 +9,11 @@ an easily swap with the original one.
 The __aim__ of this project is to provide an alternative `go fmt` which means the you will be able
 to write as you _like_ and then distribute in the standard __go way__ (`*.go formatted files`).
 
-**It's in alpha stage**
+**It's in beta stage**
 
 ### How it works?
 
-You can [TRY IT ONLINE](http://igo.herokuapp.com) or with the `cli`:
+You can [TRY IT on play.igolang.io](http://play.igolang.io) or with the `cli`:
 
 ```
 usage: igo [compile|parse|build] [flags] [path ...]
@@ -124,7 +124,8 @@ some annoyance. Nothing more.
 
 In my roadmap there is:
 
-- [x] Hidden builds (aka `igo build|run|test`)
+- [x] Builds (aka `igo build|run|test`)
+- [ ] Add GoCode like for editors
 - [ ] iGo format (aka `igo fmt`)
 - [ ] iGo doc (aka `igo doc`)
 - [ ] Expose `ast` (aka `little macros`)
