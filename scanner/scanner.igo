@@ -56,7 +56,6 @@ type Scanner struct
 const
 	MaxIndent = 100
 
-
 type indent struct
 	idx    int            # current indentation index
 	pendin int            # track of indent/dedent
@@ -76,7 +75,6 @@ func *Scanner.next()
 			self.file.AddLine(self.offset)
 			self.whiteWidth = 0
 
-
 		r, w := rune(self.src[self.rdOffset]), 1
 		switch
 			case r == 0:
@@ -89,9 +87,6 @@ func *Scanner.next()
 				else if r == bom && self.offset > 0
 					self.error(self.offset, "illegal byte order mark")
 
-
-
-
 		self.rdOffset += w
 		self.ch = r
 	else
@@ -99,7 +94,6 @@ func *Scanner.next()
 		if self.ch == '\n'
 			self.lineOffset = self.offset
 			self.file.AddLine(self.offset)
-
 
 		self.ch = -1 # eof
 
@@ -131,7 +125,6 @@ func *Scanner.Init(file *token.File, src []byte, err ErrorHandler, mode Mode)
 	if file.Size() != len(src)
 		panic(fmt.Sprintf("file size (%d) does not match src len (%d)", file.Size(), len(src)))
 
-
 	self.file = file
 	self.dir, _ = filepath.Split(file.Name())
 	self.src = src
@@ -152,9 +145,7 @@ func *Scanner.error(offs int, msg string)
 	if self.err != nil
 		self.err(self.file.Position(self.file.Pos(offs)), msg)
 
-
 	self.ErrorCount++
-
 
 var prefix = []byte("#line ")
 
@@ -180,45 +171,35 @@ func *Scanner.scanComment() string
 	if self.ch == '\r'
 		hasCR = true
 
-
 	for self.ch != '\n' && self.ch >= 0
 		if self.ch == '\r'
 			hasCR = true
 
-
 		self.next()
-
 
 	if offs == self.lineOffset
 		# comment starts at the beginning of the current line
 		self.interpretLineComment(self.src[offs:self.offset])
-
 
 	lit := self.src[offs:self.offset]
 
 	if hasCR
 		lit = stripCR(lit)
 
-
 	return string(lit)
-
 
 func isLetter(ch rune) bool
 	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || ch >= 0x80 && unicode.IsLetter(ch)
 
-
 func isDigit(ch rune) bool
 	return '0' <= ch && ch <= '9' || ch >= 0x80 && unicode.IsDigit(ch)
-
 
 func *Scanner.scanIdentifier() string
 	offs := self.offset
 	for isLetter(self.ch) || isDigit(self.ch)
 		self.next()
 
-
 	return string(self.src[offs:self.offset])
-
 
 func digitVal(ch rune) int
 	switch
@@ -229,15 +210,11 @@ func digitVal(ch rune) int
 		case 'A' <= ch && ch <= 'F':
 			return int(ch - 'A' + 10)
 
-
 	return 16 # larger than any legal digit val
 
 func *Scanner.scanMantissa(base int)
 	for digitVal(self.ch) < base
 		self.next()
-
-
-
 
 func *Scanner.scanNumber(seenDecimalPoint bool) (token.Token, string)
 	# digitVal(s.ch) < 10
@@ -249,7 +226,6 @@ func *Scanner.scanNumber(seenDecimalPoint bool) (token.Token, string)
 		tok = token.FLOAT
 		self.scanMantissa(10)
 		goto exponent
-
 
 	if self.ch == '0'
 		# int or float
@@ -263,7 +239,6 @@ func *Scanner.scanNumber(seenDecimalPoint bool) (token.Token, string)
 				# only scanned "0x" or "0X"
 				self.error(offs, "illegal hexadecimal number")
 
-
 		else
 
 			# octal int or float
@@ -274,16 +249,12 @@ func *Scanner.scanNumber(seenDecimalPoint bool) (token.Token, string)
 				seenDecimalDigit = true
 				self.scanMantissa(10)
 
-
 			if self.ch == '.' || self.ch == 'e' || self.ch == 'E' || self.ch == 'i'
 				goto fraction
 
 			# octal int
 			if seenDecimalDigit
 				self.error(offs, "illegal octal number")
-
-
-
 
 		goto exit
 
@@ -296,7 +267,6 @@ func *Scanner.scanNumber(seenDecimalPoint bool) (token.Token, string)
 			self.next()
 			self.scanMantissa(10)
 
-
 	exponent:
 		if self.ch == 'e' || self.ch == 'E'
 			tok = token.FLOAT
@@ -304,18 +274,14 @@ func *Scanner.scanNumber(seenDecimalPoint bool) (token.Token, string)
 			if self.ch == '-' || self.ch == '+'
 				self.next()
 
-
 			self.scanMantissa(10)
-
 
 		if self.ch == 'i'
 			tok = token.IMAG
 			self.next()
 
-
 	exit:
 		return tok, string(self.src[offs:self.offset])
-
 
 func *Scanner.scanEscape(quote rune)
 	offs := self.offset
@@ -341,14 +307,12 @@ func *Scanner.scanEscape(quote rune)
 			self.error(offs, "unknown escape sequence")
 			return
 
-
 	var x uint32
 	for ; i > 0 && self.ch != quote && self.ch >= 0; i--
 		d := uint32(digitVal(self.ch))
 		if d >= base
 			self.error(self.offset, "illegal character in escape sequence")
 			break
-
 
 		x = x*base + d
 		self.next()
@@ -357,12 +321,8 @@ func *Scanner.scanEscape(quote rune)
 	for ; i > 0 && self.ch != quote && self.ch >= 0; i--
 		self.next()
 
-
 	if x > max || 0xD800 <= x && x < 0xE000
 		self.error(offs, "escape sequence is invalid Unicode code point")
-
-
-
 
 func *Scanner.scanChar() string
 	# '\'' opening already consumed
@@ -378,21 +338,15 @@ func *Scanner.scanChar() string
 			n = 1
 			break
 
-
 		if ch == '\\'
 			self.scanEscape('\'')
-
-
-
 
 	self.next()
 
 	if n != 1
 		self.error(offs, "illegal character literal")
 
-
 	return string(self.src[offs:self.offset])
-
 
 func *Scanner.scanString() string
 	# '"' opening already consumed
@@ -405,17 +359,12 @@ func *Scanner.scanString() string
 			self.error(offs, "string not terminated")
 			break
 
-
 		if ch == '\\'
 			self.scanEscape('"')
-
-
-
 
 	self.next()
 
 	return string(self.src[offs:self.offset])
-
 
 func stripCR(b []byte) []byte
 	c := make([]byte, len(b))
@@ -425,11 +374,7 @@ func stripCR(b []byte) []byte
 			c[i] = ch
 			i++
 
-
-
-
 	return c[:i]
-
 
 func *Scanner.scanRawString() string
 	# '`' opening already consumed
@@ -442,13 +387,9 @@ func *Scanner.scanRawString() string
 		if ch == '\r'
 			hasCR = true
 
-
 		if ch < 0
 			self.error(offs, "string not terminated")
 			break
-
-
-
 
 	self.next()
 
@@ -456,9 +397,7 @@ func *Scanner.scanRawString() string
 	if hasCR
 		lit = stripCR(lit)
 
-
 	return string(lit)
-
 
 func *Scanner.scanRawString2() string
 	# '"' opening already consumed
@@ -478,7 +417,6 @@ func *Scanner.scanRawString2() string
 			if ch == '\r'
 				hasCR = true
 
-
 			self.next()
 			# check if we are at end of comment
 			if ch == '"' && self.ch == '"'
@@ -488,26 +426,18 @@ func *Scanner.scanRawString2() string
 					self.next()
 					goto exit
 
-
-
-
-
-
 	else
 
 		# we are already good with an empty string
 		terminated = true
 
-
 	if !terminated
 		self.error(offs, "string not terminated")
-
 
 	exit:
 		lit := self.src[offs:self.offset]
 		if hasCR
 			lit = stripCR(lit)
-
 
 		return string(lit)
 
@@ -515,9 +445,6 @@ func *Scanner.scanRawString2() string
 func *Scanner.cleanCRLF()
 	for self.ch == '\n' || self.ch == '\r'
 		self.next()
-
-
-
 
 func *Scanner.skipWhitespace()
 	bol := self.offset == self.lineOffset
@@ -537,29 +464,23 @@ func *Scanner.switch2(tok0, tok1 token.Token) token.Token
 		self.next()
 		return tok1
 
-
 	return tok0
-
 
 func *Scanner.switch3(tok0, tok1 token.Token, ch2 rune, tok2 token.Token) token.Token
 	if self.ch == '='
 		self.next()
 		return tok1
 
-
 	if self.ch == ch2
 		self.next()
 		return tok2
 
-
 	return tok0
-
 
 func *Scanner.switch4(tok0, tok1 token.Token, ch2 rune, tok2, tok3 token.Token) token.Token
 	if self.ch == '='
 		self.next()
 		return tok1
-
 
 	if self.ch == ch2
 		self.next()
@@ -567,9 +488,7 @@ func *Scanner.switch4(tok0, tok1 token.Token, ch2 rune, tok2, tok3 token.Token) 
 			self.next()
 			return tok3
 
-
 		return tok2
-
 
 	return tok0
 
@@ -608,6 +527,9 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 	newLine:
 		blankLine := false
 
+		# previous token start
+		pos = self.file.Pos(self.offset)
+
 		if self.offset == self.lineOffset
 
 			cl := 0 # current level
@@ -615,15 +537,14 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 			for
 				if self.ch == '\t'
 					cl += 2
-				else if self.ch == ' ' # TODO: use (level/tabsize + 1) * tabsize
+				else # TODO: use (level/tabsize + 1) * tabsize
+				if self.ch == ' '
 					cl++
 				else
 					break
 
-
 				self.whiteWidth++
 				self.next()
-
 
 			blankLine = self.ch == '\n'
 
@@ -642,21 +563,20 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 							self.indent.pendin--
 							self.indent.idx--
 
-
 						if cl != self.indent.stack[self.indent.idx]
 							self.error(self.offset, "incosistent indentation")
-
-						# current token start
-		pos = self.file.Pos(self.offset)
 
 		switch
 			case self.indent.pendin < 0:
 				self.indent.pendin++
 				return pos - 1, token.DEDENT, "}"
+
 			case self.indent.pendin > 0:
 				self.indent.pendin--
-				return pos, token.INDENT, "{"
+				return pos - 1, token.INDENT, "{"
 
+			# current token start
+		pos = self.file.Pos(self.offset)
 
 	scanAgain:
 
@@ -674,10 +594,8 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 							self.unfinished = true
 							return
 
-
 				else
 					tok = token.IDENT
-
 
 			case '0' <= ch && ch <= '9':
 				tok, lit = self.scanNumber(false)
@@ -689,21 +607,17 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 							self.indent.idx--
 							return pos, token.DEDENT, "}"
 
-
 						tok = token.EOF
 					case '\n':
 						if blankLine || self.indent.level > 0
 							goto newLine
 
-
 						if self.noSemi
 							self.noSemi = false
 							goto newLine
 
-
 						if self.unfinished
 							goto newLine
-
 
 						return pos, token.SEMICOLON, "\n"
 					case '"':
@@ -713,7 +627,6 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 						else
 							tok = token.STRING
 							lit = self.scanString()
-
 
 					case '\'':
 						tok = token.CHAR
@@ -727,7 +640,6 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 							self.unfinished = true
 							return
 
-
 					case '.':
 						if '0' <= self.ch && self.ch <= '9'
 							tok, lit = self.scanNumber(true)
@@ -737,10 +649,8 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 								self.next()
 								tok = token.ELLIPSIS
 
-
 						else
 							tok = token.PERIOD
-
 
 					case ',':
 						tok = token.COMMA
@@ -787,12 +697,10 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 							# skip comment
 							goto scanAgain
 
-
 						tok = token.COMMENT
 						# Should not affect the status of the 'line'
 						if self.unfinished
 							return
-
 
 					case '/':
 						tok = self.switch2(token.QUO, token.QUO_ASSIGN)
@@ -812,7 +720,6 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 							tok = token.ARROW
 						else
 							tok = self.switch4(token.LSS, token.LEQ, '<', token.SHL, token.SHL_ASSIGN)
-
 
 						self.unfinished = true
 						return
@@ -835,7 +742,6 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 						else
 							tok = self.switch3(token.AND, token.AND_ASSIGN, '&', token.LAND)
 
-
 						self.unfinished = true
 						return
 					case '|':
@@ -847,12 +753,8 @@ func *Scanner.Scan() (pos token.Pos, tok token.Token, lit string)
 						if ch != bom
 							self.error(self.file.Offset(pos), fmt.Sprintf("illegal character %#U", ch))
 
-
 						tok = token.ILLEGAL
 						lit = string(ch)
-
-
-
 
 		self.unfinished = false
 		return

@@ -18,7 +18,6 @@ func SortImports(fset *token.FileSet, f *File)
 			# Imports are always first.
 			break
 
-
 		if !d.Dedent.IsValid()
 			# Not a block: sorted by default.
 			continue
@@ -31,27 +30,18 @@ func SortImports(fset *token.FileSet, f *File)
 				sortSpecs(fset, f, d.Specs[i:j])
 				i = j
 
-
-
-
 		sortSpecs(fset, f, d.Specs[i:])
-
-
-
 
 func importPath(s Spec) string
 	t, err := strconv.Unquote(s.(*ImportSpec).Path.Value)
 	if err == nil
 		return t
 
-
 	return ""
-
 
 type posSpan struct
 	Start token.Pos
 	End   token.Pos
-
 
 func sortSpecs(fset *token.FileSet, f *File, specs []Spec)
 	# Avoid work if already sorted (also catches < 2 entries).
@@ -60,9 +50,6 @@ func sortSpecs(fset *token.FileSet, f *File, specs []Spec)
 		if i > 0 && importPath(specs[i-1]) > importPath(s)
 			sorted = false
 			break
-
-
-
 
 	if sorted
 		return
@@ -81,17 +68,12 @@ func sortSpecs(fset *token.FileSet, f *File, specs []Spec)
 		if g.Pos() < pos[0].Start
 			continue
 
-
 		if i < cstart
 			cstart = i
-
 
 		if fset.Position(g.End()).Line > lastLine
 			cend = i
 			break
-
-
-
 
 	comments := f.Comments[cstart:cend]
 
@@ -101,7 +83,6 @@ func sortSpecs(fset *token.FileSet, f *File, specs []Spec)
 	for _, g := range comments
 		for specIndex+1 < len(specs) && pos[specIndex+1].Start <= g.Pos()
 			specIndex++
-
 
 		s := specs[specIndex].(*ImportSpec)
 		importComment[s] = append(importComment[s], g)
@@ -116,20 +97,13 @@ func sortSpecs(fset *token.FileSet, f *File, specs []Spec)
 		if s.Name != nil
 			s.Name.NamePos = pos[i].Start
 
-
 		s.Path.ValuePos = pos[i].Start
 		s.EndPos = pos[i].End
 		for _, g := range importComment[s]
 			for _, c := range g.List
 				c.Slash = pos[i].End
 
-
-
-
-
-
 	sort.Sort(byCommentPos(comments))
-
 
 type byImportPath []Spec # slice of *ImportSpec
 
@@ -141,7 +115,6 @@ func byImportPath.Swap(i, j int)
 
 func byImportPath.Less(i, j int) bool
 	return importPath(self[i]) < importPath(self[j])
-
 
 type byCommentPos []*CommentGroup
 

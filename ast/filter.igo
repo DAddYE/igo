@@ -49,9 +49,6 @@ func filterIdentList(list []*Ident, f Filter) []*Ident
 			list[j] = x
 			j++
 
-
-
-
 	return list[0:j]
 
 # fieldName assumes that x is the type of an anonymous field and
@@ -66,18 +63,14 @@ func fieldName(x Expr) *Ident
 			if _, ok := t.X.(*Ident); ok
 				return t.Sel
 
-
 		case *StarExpr:
 			return fieldName(t.X)
 
-
 	return nil
-
 
 func filterFieldList(fields *FieldList, filter Filter, export bool) (removedFields bool)
 	if fields == nil
 		return false
-
 
 	list := fields.List
 	j := 0
@@ -93,44 +86,31 @@ func filterFieldList(fields *FieldList, filter Filter, export bool) (removedFiel
 			if len(f.Names) < n
 				removedFields = true
 
-
 			keepField = len(f.Names) > 0
-
 
 		if keepField
 			if export
 				filterType(f.Type, filter, export)
 
-
 			list[j] = f
 			j++
-
-
-
 
 	if j < len(list)
 		removedFields = true
 
-
 	fields.List = list[0:j]
 	return
-
 
 func filterParamList(fields *FieldList, filter Filter, export bool) bool
 	if fields == nil
 		return false
-
 
 	var b bool
 	for _, f := range fields.List
 		if filterType(f.Type, filter, export)
 			b = true
 
-
-
-
 	return b
-
 
 func filterType(typ Expr, f Filter, export bool) bool
 	switch t := typ.(type)
@@ -144,7 +124,6 @@ func filterType(typ Expr, f Filter, export bool) bool
 			if filterFieldList(t.Fields, f, export)
 				t.Incomplete = true
 
-
 			return len(t.Fields.List) > 0
 		case *FuncType:
 			b1 := filterParamList(t.Params, f, export)
@@ -154,7 +133,6 @@ func filterType(typ Expr, f Filter, export bool) bool
 			if filterFieldList(t.Methods, f, export)
 				t.Incomplete = true
 
-
 			return len(t.Methods.List) > 0
 		case *MapType:
 			b1 := filterType(t.Key, f, export)
@@ -163,9 +141,7 @@ func filterType(typ Expr, f Filter, export bool) bool
 		case *ChanType:
 			return filterType(t.Value, f, export)
 
-
 	return false
-
 
 func filterSpec(spec Spec, f Filter, export bool) bool
 	switch s := spec.(type)
@@ -175,18 +151,14 @@ func filterSpec(spec Spec, f Filter, export bool) bool
 				if export
 					filterType(s.Type, f, export)
 
-
 				return true
-
 
 		case *TypeSpec:
 			if f(s.Name.Name)
 				if export
 					filterType(s.Type, f, export)
 
-
 				return true
-
 
 			if !export
 				# For general filtering (not just exports),
@@ -196,11 +168,7 @@ func filterSpec(spec Spec, f Filter, export bool) bool
 				# keep the declaration.
 				return filterType(s.Type, f, export)
 
-
-
-
 	return false
-
 
 func filterSpecList(list []Spec, f Filter, export bool) []Spec
 	j := 0
@@ -208,9 +176,6 @@ func filterSpecList(list []Spec, f Filter, export bool) []Spec
 		if filterSpec(s, f, export)
 			list[j] = s
 			j++
-
-
-
 
 	return list[0:j]
 
@@ -224,7 +189,6 @@ func filterSpecList(list []Spec, f Filter, export bool) []Spec
 func FilterDecl(decl Decl, f Filter) bool
 	return filterDecl(decl, f, false)
 
-
 func filterDecl(decl Decl, f Filter, export bool) bool
 	switch d := decl.(type)
 		case *GenDecl:
@@ -232,7 +196,6 @@ func filterDecl(decl Decl, f Filter, export bool) bool
 			return len(d.Specs) > 0
 		case *FuncDecl:
 			return f(d.Name.Name)
-
 
 	return false
 
@@ -249,16 +212,12 @@ func filterDecl(decl Decl, f Filter, export bool) bool
 func FilterFile(src *File, f Filter) bool
 	return filterFile(src, f, false)
 
-
 func filterFile(src *File, f Filter, export bool) bool
 	j := 0
 	for _, d := range src.Decls
 		if filterDecl(d, f, export)
 			src.Decls[j] = d
 			j++
-
-
-
 
 	src.Decls = src.Decls[0:j]
 	return j > 0
@@ -277,15 +236,11 @@ func filterFile(src *File, f Filter, export bool) bool
 func FilterPackage(pkg *Package, f Filter) bool
 	return filterPackage(pkg, f, false)
 
-
 func filterPackage(pkg *Package, f Filter, export bool) bool
 	hasDecls := false
 	for _, src := range pkg.Files
 		if filterFile(src, f, export)
 			hasDecls = true
-
-
-
 
 	return hasDecls
 
@@ -350,7 +305,6 @@ func MergePackageFiles(pkg *Package, mode MergeMode) *File
 		ncomments += len(f.Comments)
 		ndecls += len(f.Decls)
 
-
 	sort.Strings(filenames)
 
 	# Collect package comments from all package files into a single
@@ -370,22 +324,15 @@ func MergePackageFiles(pkg *Package, mode MergeMode) *File
 					list[i] = separator
 					i++
 
-
 				for _, c := range f.Doc.List
 					list[i] = c
 					i++
-
 
 				if f.Package > pos
 					# Keep the maximum package clause position as
 					# position for the package clause of the merged
 					# files.
 					pos = f.Package
-
-
-
-
-
 
 		doc = &CommentGroup{list}
 
@@ -422,16 +369,10 @@ func MergePackageFiles(pkg *Package, mode MergeMode) *File
 								# ignore the new declaration
 								d = nil
 
-
 							n++
 						else # filtered an entry
 
 							funcs[name] = i
-
-
-
-
-
 
 				decls[i] = d
 				i++
@@ -447,9 +388,6 @@ func MergePackageFiles(pkg *Package, mode MergeMode) *File
 				if d != nil
 					decls[i] = d
 					i++
-
-
-
 
 			decls = decls[0:i]
 
@@ -470,11 +408,6 @@ func MergePackageFiles(pkg *Package, mode MergeMode) *File
 					#   different) comments
 					imports = append(imports, imp)
 					seen[path] = true
-
-
-
-
-
 
 	else
 		for _, f := range pkg.Files

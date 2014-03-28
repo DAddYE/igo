@@ -128,7 +128,6 @@ const
 	VAR
 	keyword_end
 
-
 var tokens = [...]string{
 	ILLEGAL: "ILLEGAL",
 
@@ -244,10 +243,8 @@ func Token.String() string
 	if 0 <= self && self < Token(len(tokens))
 		s = tokens[self]
 
-
 	if s == ""
 		s = "token(" + strconv.Itoa(int(self)) + ")"
-
 
 	return s
 
@@ -279,9 +276,7 @@ func Token.Precedence() int
 		case MUL, QUO, REM, SHL, SHR, AND, AND_NOT:
 			return 5
 
-
 	return LowestPrec
-
 
 var keywords map[string]Token
 
@@ -295,7 +290,6 @@ func init()
 func Lookup(ident string) Token
 	if tok, is_keyword := keywords[ident]; is_keyword
 		return tok
-
 
 	return IDENT
 

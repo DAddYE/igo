@@ -16,34 +16,25 @@ import
 	"os"
 	"strings"
 
-
 var
+	IgoPositions   = make(map[string]*printer.Positions)
 	igoFileSet     = token.NewFileSet() # per process FileSet
 	igoParserMode  parser.Mode
 	igoPrinterMode printer.Mode
-
 
 func igoReport(err error)
 	scanner.PrintError(os.Stderr, err)
 	exitCode = 2
 
-
-func igoInitParserMode()
+func igoInit()
 	igoParserMode = parser.Mode(0)
 	if *comments
 		igoParserMode |= parser.ParseComments
 
-
 	igoParserMode |= parser.AllErrors
-
-
-func igoInitPrinterMode()
 	igoPrinterMode = printer.UseSpaces
 	if *tabIndent
 		igoPrinterMode |= printer.TabIndent
-
-
-
 
 func igoProcessFile(filename string, in io.Reader, out io.Writer) error
 	dest := strings.TrimSuffix(filename, ".igo") + ".go"
@@ -52,62 +43,51 @@ func igoProcessFile(filename string, in io.Reader, out io.Writer) error
 	if err != nil
 		return err
 
-
 	defer f.Close()
 
 	src, err := ioutil.ReadAll(f)
 	if err != nil
 		return err
 
-
 	file, adjust, err := igoParse(igoFileSet, filename, src)
 	if err != nil
 		return err
 
-
 	ast.SortImports(igoFileSet, file)
 
 	var buf bytes.Buffer
-	err = (&printer.Config{Mode: igoPrinterMode, Tabwidth: *tabWidth}).Fprint(&buf, igoFileSet, file)
+	var pos *printer.Positions
+	pos, err = (&printer.Config{Mode: igoPrinterMode, Tabwidth: *tabWidth}).Fprint(&buf, igoFileSet, file)
 	if err != nil
 		return err
 
+	IgoPositions[filename] = pos
 
 	res := buf.Bytes()
 	if adjust != nil
 		res = adjust(src, res)
 
-
-	if *destDir != ""
-		dest = filepath.Join(*destDir, dest)
-		createDir(dest)
-
+	createDir(filepath.Join(*DestDir, dest))
 
 	err = ioutil.WriteFile(dest, res, 0644)
 	if err != nil
 		return err
 
-
 	return err
-
 
 func igoFile(f os.FileInfo) bool
 	# ignore non-iGo files
 	name := f.Name()
 	return !f.IsDir() && !strings.HasPrefix(name, ".") && strings.HasSuffix(name, ".igo")
 
-
 func igoVisitFile(path string, f os.FileInfo, err error) error
 	if err == nil && igoFile(f)
 		err = igoProcessFile(path, nil, os.Stdout)
 
-
 	if err != nil
 		igoReport(err)
 
-
 	return nil
-
 
 func igoWalkPath(path string)
 	switch dir, err := os.Stat(path);
@@ -116,7 +96,8 @@ func igoWalkPath(path string)
 		case dir.IsDir():
 			filepath.Walk(path, igoVisitFile)
 		default:
-			if err := igoProcessFile(path, nil, os.Stdout); err != nil
+			err := igoProcessFile(path, nil, os.Stdout)
+			if err != nil
 				igoReport(err)
 
 			# parse parses src, which was read from filename,
@@ -145,7 +126,6 @@ func igoParse(fset *token.FileSet, filename string, src []byte) (*ast.File, func
 			# Gofmt has turned the ; into a \n.
 			src = src[len("package p\n"):]
 			return matchSpace(orig, src)
-
 
 		return file, adjust, nil
 

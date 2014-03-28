@@ -10,10 +10,11 @@ package from_go
 
 import
 	"bytes"
-	iToken "github.com/DAddYE/igo/token"
 	"go/ast"
 	"go/token"
 	"unicode/utf8"
+
+	iToken "github.com/DAddYE/igo/token"
 
 # Formatting issues:
 # - better comment formatting for /*-style comments at the end of a line (e.g. a declaration)
@@ -44,20 +45,16 @@ func *printer.linebreak(line, min int, ws whiteSpace, newSection bool) (printedB
 	if n < min
 		n = min
 
-
 	if n > 0
 		self.print(ws)
 		if newSection
 			self.print(formfeed)
 			n--
 
-
 		for ; n > 0; n--
 			self.print(newline)
 
-
 		printedBreak = true
-
 
 	return
 
@@ -68,7 +65,6 @@ func *printer.linebreak(line, min int, ws whiteSpace, newSection bool) (printedB
 func *printer.setComment(g *ast.CommentGroup)
 	if g == nil || !self.useNodeComments
 		return
-
 
 	if self.comments == nil
 		# initialize p.comments lazily
@@ -81,7 +77,6 @@ func *printer.setComment(g *ast.CommentGroup)
 		self.comments = self.comments[0:1]
 		# in debug mode, report error
 		self.internalError("setComment found pending comments")
-
 
 	self.comments[0] = g
 	self.cindex = 0
@@ -106,11 +101,9 @@ func *printer.identList(list []*ast.Ident, indent bool)
 	for i, x := range list
 		xlist[i] = x
 
-
 	var mode exprListMode
 	if !indent
 		mode = noIndent
-
 
 	self.exprList(token.NoPos, xlist, 1, mode, token.NoPos)
 
@@ -125,7 +118,6 @@ func *printer.exprList(prev0 token.Pos, list []ast.Expr, depth int, mode exprLis
 	if len(list) == 0
 		return
 
-
 	prev := self.posFor(prev0)
 	next := self.posFor(next0)
 	line := self.lineFor(list[0].Pos())
@@ -139,9 +131,7 @@ func *printer.exprList(prev0 token.Pos, list []ast.Expr, depth int, mode exprLis
 				# comma position for correct comment placement
 				self.print(x.Pos(), token.COMMA, blank)
 
-
 			self.expr0(x, depth)
-
 
 		return
 
@@ -189,7 +179,6 @@ func *printer.exprList(prev0 token.Pos, list []ast.Expr, depth int, mode exprLis
 			if isPair
 				size = self.nodeSize(pair.Key, infinity)
 
-
 		else # size <= infinity
 
 			# size too large or we don't have good layout information
@@ -208,9 +197,6 @@ func *printer.exprList(prev0 token.Pos, list []ast.Expr, depth int, mode exprLis
 				ratio := float64(size) / float64(prevSize)
 				useFF = ratio <= 1.0/r || r <= ratio
 
-
-
-
 		if i > 0
 			needsLinebreak := prevLine < line && prevLine > 0 && line > 0
 			# use position of expression following the comma as
@@ -218,7 +204,6 @@ func *printer.exprList(prev0 token.Pos, list []ast.Expr, depth int, mode exprLis
 			# only if the expression is on the same line
 			if !needsLinebreak
 				self.print(x.Pos())
-
 
 			self.print(token.COMMA)
 			needsBlank := true
@@ -234,9 +219,6 @@ func *printer.exprList(prev0 token.Pos, list []ast.Expr, depth int, mode exprLis
 			if needsBlank
 				self.print(blank)
 
-
-
-
 		if isPair && size > 0 && len(list) > 1
 			# we have a key:value expression that fits onto one line and
 			# is in a list with more then one entry: use a column for the
@@ -247,9 +229,6 @@ func *printer.exprList(prev0 token.Pos, list []ast.Expr, depth int, mode exprLis
 		else
 			self.expr0(x, depth)
 
-
-
-
 	if mode&commaTerm != 0 && next.IsValid() && self.pos.Line < next.Line
 		# print a terminating comma if the next token is on a new line
 		self.print(token.COMMA)
@@ -257,17 +236,12 @@ func *printer.exprList(prev0 token.Pos, list []ast.Expr, depth int, mode exprLis
 			# unindent if we indented
 			self.print(unindent)
 
-
 		self.print(formfeed) # terminating comma needs a line break to look good
 		return
-
 
 	if ws == ignore && mode&noIndent == 0
 		# unindent if we indented
 		self.print(unindent)
-
-
-
 
 func *printer.parameters(fields *ast.FieldList)
 	self.print(fields.Opening, token.LPAREN)
@@ -284,7 +258,6 @@ func *printer.parameters(fields *ast.FieldList)
 			else
 				parLineBeg = self.lineFor(par.Type.Pos())
 
-
 			var parLineEnd = self.lineFor(par.Type.End())
 			# separating "," if needed
 			needsLinebreak := 0 < prevLine && prevLine < parLineBeg
@@ -294,7 +267,6 @@ func *printer.parameters(fields *ast.FieldList)
 				# only if the next parameter is on the same line
 				if !needsLinebreak
 					self.print(par.Pos())
-
 
 				self.print(token.COMMA)
 
@@ -330,18 +302,13 @@ func *printer.parameters(fields *ast.FieldList)
 		if ws == ignore
 			self.print(unindent)
 
-
-
-
 	self.print(fields.Closing, token.RPAREN)
-
 
 func *printer.signature(params, result *ast.FieldList)
 	if params != nil
 		self.parameters(params)
 	else
 		self.print(token.LPAREN, token.RPAREN)
-
 
 	n := result.NumFields()
 	if n > 0
@@ -352,27 +319,18 @@ func *printer.signature(params, result *ast.FieldList)
 			self.expr(stripParensAlways(result.List[0].Type))
 			return
 
-
 		self.parameters(result)
-
-
-
 
 func identListSize(list []*ast.Ident, maxSize int) (size int)
 	for i, x := range list
 		if i > 0
 			size += len(", ")
 
-
 		size += utf8.RuneCountInString(x.Name)
 		if size >= maxSize
 			break
 
-
-
-
 	return
-
 
 func *printer.isOneLineFieldList(list []*ast.Field) bool
 	if len(list) != 1
@@ -391,14 +349,11 @@ func *printer.isOneLineFieldList(list []*ast.Field) bool
 	typeSize := self.nodeSize(f.Type, maxSize)
 	return namesSize+typeSize <= maxSize
 
-
 func *printer.setLineComment(text string)
 	self.setComment(&ast.CommentGroup{List: []*ast.Comment{{Slash: token.NoPos, Text: text}}})
 
-
 func *printer.isMultiLine(n ast.Node) bool
 	return self.lineFor(n.End())-self.lineFor(n.Pos()) > 0
-
 
 func *printer.fieldList(fields *ast.FieldList, isStruct, isIncomplete bool)
 	lbrace := fields.Opening
@@ -421,13 +376,10 @@ func *printer.fieldList(fields *ast.FieldList, isStruct, isIncomplete bool)
 					# no comments so no need for comma position
 					self.print(token.COMMA, blank)
 
-
 				self.expr(x)
-
 
 			if len(f.Names) > 0
 				self.print(blank)
-
 
 			self.expr(f.Type)
 			return
@@ -437,7 +389,6 @@ func *printer.fieldList(fields *ast.FieldList, isStruct, isIncomplete bool)
 	if hasComments || len(list) > 0
 		self.print(formfeed)
 
-
 	self.print(indent)
 	if isStruct
 
@@ -445,12 +396,10 @@ func *printer.fieldList(fields *ast.FieldList, isStruct, isIncomplete bool)
 		if len(list) == 1
 			sep = blank
 
-
 		newSection := false
 		for i, f := range list
 			if i > 0
 				self.linebreak(self.lineFor(f.Pos()), 1, ignore, newSection)
-
 
 			extraTabs := 0
 			self.setComment(f.Doc)
@@ -466,27 +415,21 @@ func *printer.fieldList(fields *ast.FieldList, isStruct, isIncomplete bool)
 				self.expr(f.Type)
 				extraTabs = 2
 
-
 			if f.Tag != nil
 				if len(f.Names) > 0 && sep == vtab
 					self.print(sep)
-
 
 				self.print(sep)
 				self.expr(f.Tag)
 				extraTabs = 0
 
-
 			if f.Comment != nil
 				for ; extraTabs > 0; extraTabs--
 					self.print(sep)
 
-
 				self.setComment(f.Comment)
 
-
 			newSection = self.isMultiLine(f)
-
 
 		if isIncomplete
 			if len(list) > 0
@@ -494,7 +437,6 @@ func *printer.fieldList(fields *ast.FieldList, isStruct, isIncomplete bool)
 
 			# p.flush(p.posFor(rbrace), token.RBRACE) // make sure we don't lose the last line comment
 			self.setLineComment("// contains filtered or unexported fields")
-
 
 	else
 
@@ -504,7 +446,6 @@ func *printer.fieldList(fields *ast.FieldList, isStruct, isIncomplete bool)
 		for i, f := range list
 			if i > 0
 				self.linebreak(self.lineFor(f.Pos()), 1, ignore, newSection)
-
 
 			self.setComment(f.Doc)
 			if ftyp, isFtyp := f.Type.(*ast.FuncType); isFtyp
@@ -516,10 +457,8 @@ func *printer.fieldList(fields *ast.FieldList, isStruct, isIncomplete bool)
 				# embedded interface
 				self.expr(f.Type)
 
-
 			self.setComment(f.Comment)
 			newSection = self.isMultiLine(f)
-
 
 		if isIncomplete
 			if len(list) > 0
@@ -527,9 +466,6 @@ func *printer.fieldList(fields *ast.FieldList, isStruct, isIncomplete bool)
 
 			# p.flush(p.posFor(rbrace), token.RBRACE) // make sure we don't lose the last line comment
 			self.setLineComment("// contains filtered or unexported methods")
-
-
-
 
 	self.print(unindent, formfeed)
 
@@ -543,7 +479,6 @@ func walkBinary(e *ast.BinaryExpr) (has4, has5 bool, maxProblem int)
 		case 5:
 			has5 = true
 
-
 	switch l := e.X.(type)
 		case *ast.BinaryExpr:
 			if l.Op.Precedence() < e.Op.Precedence()
@@ -551,15 +486,11 @@ func walkBinary(e *ast.BinaryExpr) (has4, has5 bool, maxProblem int)
 				# pretend this is an *ast.ParenExpr and do nothing.
 				break
 
-
 			h4, h5, mp := walkBinary(l)
 			has4 = has4 || h4
 			has5 = has5 || h5
 			if maxProblem < mp
 				maxProblem = mp
-
-
-
 
 	switch r := e.Y.(type)
 		case *ast.BinaryExpr:
@@ -568,18 +499,15 @@ func walkBinary(e *ast.BinaryExpr) (has4, has5 bool, maxProblem int)
 				# pretend this is an *ast.ParenExpr and do nothing.
 				break
 
-
 			h4, h5, mp := walkBinary(r)
 			has4 = has4 || h4
 			has5 = has5 || h5
 			if maxProblem < mp
 				maxProblem = mp
 
-
 		case *ast.StarExpr:
 			if e.Op == token.QUO # `*/`
 				maxProblem = 5
-
 
 		case *ast.UnaryExpr:
 			switch e.Op.String() + r.Op.String()
@@ -589,49 +517,35 @@ func walkBinary(e *ast.BinaryExpr) (has4, has5 bool, maxProblem int)
 					if maxProblem < 4
 						maxProblem = 4
 
-
-
-
-
-
 	return
-
 
 func cutoff(e *ast.BinaryExpr, depth int) int
 	has4, has5, maxProblem := walkBinary(e)
 	if maxProblem > 0
 		return maxProblem + 1
 
-
 	if has4 && has5
 		if depth == 1
 			return 5
 
-
 		return 4
-
 
 	if depth == 1
 		return 6
 
-
 	return 4
-
 
 func diffPrec(expr ast.Expr, prec int) int
 	x, ok := expr.(*ast.BinaryExpr)
 	if !ok || prec != x.Op.Precedence()
 		return 1
 
-
 	return 0
-
 
 func reduceDepth(depth int) int
 	depth--
 	if depth < 1
 		depth = 1
-
 
 	return depth
 
@@ -682,14 +596,12 @@ func *printer.binaryExpr(x *ast.BinaryExpr, prec1, cutoff, depth int)
 		self.print(token.RPAREN)
 		return
 
-
 	printBlank := prec < cutoff
 
 	ws := indent
 	self.expr1(x.X, prec, depth+diffPrec(x.X, prec))
 	if printBlank
 		self.print(blank)
-
 
 	xline := self.pos.Line # before the operator (it may be on the next line!)
 	yline := self.lineFor(x.Y.Pos())
@@ -704,18 +616,13 @@ func *printer.binaryExpr(x *ast.BinaryExpr, prec1, cutoff, depth int)
 	if printBlank
 		self.print(blank)
 
-
 	self.expr1(x.Y, prec+1, depth+1)
 	if ws == ignore
 		self.print(unindent)
 
-
-
-
 func isBinary(expr ast.Expr) bool
 	_, ok := expr.(*ast.BinaryExpr)
 	return ok
-
 
 func *printer.expr1(expr ast.Expr, prec1, depth int)
 	self.print(expr.Pos())
@@ -730,12 +637,10 @@ func *printer.expr1(expr ast.Expr, prec1, depth int)
 			else
 				self.print(x)
 
-
 		case *ast.BinaryExpr:
 			if depth < 1
 				self.internalError("depth < 1:", depth)
 				depth = 1
-
 
 			self.binaryExpr(x, prec1, cutoff(x, depth), depth)
 
@@ -758,7 +663,6 @@ func *printer.expr1(expr ast.Expr, prec1, depth int)
 				self.print(token.MUL)
 				self.expr(x.X)
 
-
 		case *ast.UnaryExpr:
 			const prec = token.UnaryPrec
 			if prec < prec1
@@ -774,9 +678,7 @@ func *printer.expr1(expr ast.Expr, prec1, depth int)
 					# TODO(gri) Remove this code if it cannot be reached.
 					self.print(blank)
 
-
 				self.expr1(x.X, prec, depth)
-
 
 		case *ast.BasicLit:
 			self.print(x)
@@ -796,7 +698,6 @@ func *printer.expr1(expr ast.Expr, prec1, depth int)
 				self.expr0(x.X, reduceDepth(depth)) # parentheses undo one level of depth
 				self.print(x.Rparen, token.RPAREN)
 
-
 		case *ast.SelectorExpr:
 			self.expr1(x.X, token.HighestPrec, depth)
 			self.print(token.PERIOD)
@@ -805,7 +706,6 @@ func *printer.expr1(expr ast.Expr, prec1, depth int)
 			else
 				self.print(x.Sel.Pos(), x.Sel)
 
-
 		case *ast.TypeAssertExpr:
 			self.expr1(x.X, token.HighestPrec, depth)
 			self.print(token.PERIOD, token.LPAREN)
@@ -813,7 +713,6 @@ func *printer.expr1(expr ast.Expr, prec1, depth int)
 				self.expr(x.Type)
 			else
 				self.print(token.TYPE)
-
 
 			self.print(token.RPAREN)
 
@@ -837,17 +736,14 @@ func *printer.expr1(expr ast.Expr, prec1, depth int)
 			else
 				self.print(token.COLON)
 
-
 			if x.High != nil
 				self.expr0(x.High, depth+1)
-
 
 			self.print(x.Rbrack, token.RBRACK)
 
 		case *ast.CallExpr:
 			if len(x.Args) > 1
 				depth++
-
 
 			if _, ok := x.Fun.(*ast.FuncType); ok
 				# conversions to literal function types require parentheses around the type
@@ -857,14 +753,12 @@ func *printer.expr1(expr ast.Expr, prec1, depth int)
 			else
 				self.expr1(x.Fun, token.HighestPrec, depth)
 
-
 			self.print(x.Lparen, token.LPAREN)
 			if x.Ellipsis.IsValid()
 				self.exprList(x.Lparen, x.Args, depth, 0, x.Ellipsis)
 				self.print(x.Ellipsis, token.ELLIPSIS)
 				if x.Rparen.IsValid() && self.lineFor(x.Ellipsis) < self.lineFor(x.Rparen)
 					self.print(token.COMMA, formfeed)
-
 
 				self.print(x.Rparen, token.RPAREN)
 			else
@@ -882,18 +776,13 @@ func *printer.expr1(expr ast.Expr, prec1, depth int)
 						self.exprList(x.Lparen, x.Args, depth, commaTerm, x.Rparen)
 						self.print(x.Rparen, token.RPAREN)
 
-
 				else
 					self.print(x.Rparen, token.RPAREN)
-
-
-
 
 		case *ast.CompositeLit:
 			# composite literal elements that are composite literals themselves may have the type omitted
 			if x.Type != nil
 				self.expr1(x.Type, token.HighestPrec, depth)
-
 
 			self.print(x.Lbrace, token.LBRACE)
 			self.exprList(x.Lbrace, x.Elts, 1, commaTerm, x.Rbrace)
@@ -907,12 +796,10 @@ func *printer.expr1(expr ast.Expr, prec1, depth int)
 			if x.Elt != nil
 				self.expr(x.Elt)
 
-
 		case *ast.ArrayType:
 			self.print(token.LBRACK)
 			if x.Len != nil
 				self.expr(x.Len)
-
 
 			self.print(token.RBRACK)
 			self.expr(x.Elt)
@@ -944,20 +831,16 @@ func *printer.expr1(expr ast.Expr, prec1, depth int)
 				case ast.SEND:
 					self.print(token.CHAN, x.Arrow, token.ARROW)
 
-
 			self.print(blank)
 			self.expr(x.Value)
 
 		default:
 			panic("unreachable")
 
-
 	return
-
 
 func *printer.expr0(x ast.Expr, depth int)
 	self.expr1(x, token.LowestPrec, depth)
-
 
 func *printer.expr(x ast.Expr)
 	const depth = 1
@@ -973,10 +856,8 @@ func *printer.stmtList(list []ast.Stmt, nindent int, nextIsRBrace bool)
 	if nindent > 0
 		self.print(indent)
 
-
 	if self.inFunc && self.findent == 0
 		self.findent = self.indent
-
 
 	multiLine := false
 	i := 0
@@ -990,17 +871,12 @@ func *printer.stmtList(list []ast.Stmt, nindent int, nextIsRBrace bool)
 				# (i.e., we are not printing only a partial program)
 				self.linebreak(self.lineFor(s.Pos()), 1, ignore, i == 0 || nindent == 0 || multiLine)
 
-
 			self.stmt(s, nextIsRBrace && i == len(list)-1)
 			multiLine = self.isMultiLine(s)
 			i++
 
-
-
-
 	if !self.inFunc
 		self.findent = 0
-
 
 	if nindent > 0
 		self.print(unindent)
@@ -1010,7 +886,6 @@ func *printer.block(b *ast.BlockStmt, nindent int)
 	self.stmtList(b.List, nindent, true)
 	self.linebreak(self.lineFor(b.Rbrace), 1, ignore, true)
 
-
 func isTypeName(x ast.Expr) bool
 	switch t := x.(type)
 		case *ast.Ident:
@@ -1018,9 +893,7 @@ func isTypeName(x ast.Expr) bool
 		case *ast.SelectorExpr:
 			return isTypeName(t.X)
 
-
 	return false
-
 
 func stripParens(x ast.Expr) ast.Expr
 	if px, strip := x.(*ast.ParenExpr); strip
@@ -1041,23 +914,16 @@ func stripParens(x ast.Expr) ast.Expr
 				# in all other cases, keep inspecting
 			return true
 
-
 		if strip
 			return stripParens(px.X)
 
-
-
-
 	return x
-
 
 func stripParensAlways(x ast.Expr) ast.Expr
 	if x, ok := x.(*ast.ParenExpr); ok
 		return stripParensAlways(x.X)
 
-
 	return x
-
 
 func *printer.controlClause(isForStmt bool, init ast.Stmt, expr ast.Expr, post ast.Stmt)
 	self.print(blank)
@@ -1068,7 +934,6 @@ func *printer.controlClause(isForStmt bool, init ast.Stmt, expr ast.Expr, post a
 			self.expr(stripParens(expr))
 			needsBlank = true
 
-
 	else
 
 		# all semicolons required
@@ -1076,12 +941,10 @@ func *printer.controlClause(isForStmt bool, init ast.Stmt, expr ast.Expr, post a
 		if init != nil
 			self.stmt(init, false)
 
-
 		self.print(token.SEMICOLON, blank)
 		if expr != nil
 			self.expr(stripParens(expr))
 			needsBlank = true
-
 
 		if isForStmt
 			self.print(token.SEMICOLON, blank)
@@ -1089,11 +952,6 @@ func *printer.controlClause(isForStmt bool, init ast.Stmt, expr ast.Expr, post a
 			if post != nil
 				self.stmt(post, false)
 				needsBlank = true
-
-
-
-
-
 
 	if needsBlank
 		self.print(blank)
@@ -1121,22 +979,15 @@ func *printer.indentList(list []ast.Expr) bool
 					# line as the previous one ended
 					return true
 
-
 				if xb < xe
 					# x is a multi-line element
 					n++
 
-
 				line = xe
-
 
 			return n > 1
 
-
-
-
 	return false
-
 
 func *printer.alignFuncIndent()
 	self.flush(self.pos, self.lastTok)
@@ -1144,12 +995,8 @@ func *printer.alignFuncIndent()
 	for ; i < self.findent; i++
 		self.print(indent)
 
-
 	for ; i > self.findent; i--
 		self.print(unindent)
-
-
-
 
 func *printer.stmt(stmt ast.Stmt, nextIsRBrace bool)
 	self.print(stmt.Pos())
@@ -1173,10 +1020,8 @@ func *printer.stmt(stmt ast.Stmt, nextIsRBrace bool)
 					self.print(newline, e.Pos(), token.SEMICOLON)
 					break
 
-
 			else
 				self.linebreak(self.lineFor(s.Stmt.Pos()), 1, ignore, true)
-
 
 			self.stmt(s.Stmt, nextIsRBrace)
 
@@ -1199,7 +1044,6 @@ func *printer.stmt(stmt ast.Stmt, nextIsRBrace bool)
 			var depth = 1
 			if len(s.Lhs) > 1 && len(s.Rhs) > 1
 				depth++
-
 
 			self.exprList(s.Pos(), s.Lhs, depth, 0, s.TokPos)
 			self.print(blank, s.TokPos, s.Tok, blank)
@@ -1229,15 +1073,11 @@ func *printer.stmt(stmt ast.Stmt, nextIsRBrace bool)
 				else
 					self.exprList(s.Pos(), s.Results, 1, 0, token.NoPos)
 
-
-
-
 		case *ast.BranchStmt:
 			self.print(s.Tok)
 			if s.Label != nil
 				self.print(blank)
 				self.expr(s.Label)
-
 
 		case *ast.BlockStmt:
 			self.block(s, 1)
@@ -1257,16 +1097,12 @@ func *printer.stmt(stmt ast.Stmt, nextIsRBrace bool)
 						self.stmt(s.Else, true)
 						self.print(unindent, formfeed)
 
-
-
-
 		case *ast.CaseClause:
 			if s.List != nil
 				self.print(token.CASE, blank)
 				self.exprList(s.Pos(), s.List, 1, 0, s.Colon)
 			else
 				self.print(token.DEFAULT)
-
 
 			self.print(s.Colon, token.COLON)
 			self.stmtList(s.Body, 1, nextIsRBrace)
@@ -1285,7 +1121,6 @@ func *printer.stmt(stmt ast.Stmt, nextIsRBrace bool)
 				self.stmt(s.Init, false)
 				self.print(token.SEMICOLON)
 
-
 			self.print(blank)
 			self.stmt(s.Assign, false)
 			self.print(indent)
@@ -1299,7 +1134,6 @@ func *printer.stmt(stmt ast.Stmt, nextIsRBrace bool)
 			else
 				self.print(token.DEFAULT)
 
-
 			self.print(s.Colon, token.COLON)
 			self.stmtList(s.Body, 1, nextIsRBrace)
 
@@ -1312,7 +1146,6 @@ func *printer.stmt(stmt ast.Stmt, nextIsRBrace bool)
 				self.internalError("found a select without body")
 			else
 				self.block(body, 0)
-
 
 			self.print(unindent)
 
@@ -1330,7 +1163,6 @@ func *printer.stmt(stmt ast.Stmt, nextIsRBrace bool)
 				self.print(s.Value.Pos(), token.COMMA, blank)
 				self.expr(s.Value)
 
-
 			self.print(blank, s.TokPos, s.Tok, blank, token.RANGE, blank)
 			self.expr(stripParens(s.X))
 			self.print(blank)
@@ -1338,7 +1170,6 @@ func *printer.stmt(stmt ast.Stmt, nextIsRBrace bool)
 
 		default:
 			panic("unreachable")
-
 
 	return
 
@@ -1378,11 +1209,6 @@ func keepTypeColumn(specs []ast.Spec) []bool
 			for ; i < j; i++
 				m[i] = true
 
-
-
-
-
-
 	i0 := -1 # if i0 >= 0 we are in a run and i0 is the start of the run
 	var keepType bool
 	for i, s := range specs
@@ -1393,29 +1219,20 @@ func keepTypeColumn(specs []ast.Spec) []bool
 				i0 = i
 				keepType = false
 
-
 		else
 			if i0 >= 0
 				# end of a run
 				populate(i0, i, keepType)
 				i0 = -1
 
-
-
-
 		if t.Type != nil
 			keepType = true
-
-
-
 
 	if i0 >= 0
 		# end of a run
 		populate(i0, len(specs), keepType)
 
-
 	return m
-
 
 func *printer.valueSpec(s *ast.ValueSpec, keepType bool)
 	self.setComment(s.Doc)
@@ -1425,21 +1242,17 @@ func *printer.valueSpec(s *ast.ValueSpec, keepType bool)
 		self.print(vtab)
 		extraTabs--
 
-
 	if s.Type != nil
 		self.expr(s.Type)
-
 
 	if s.Values != nil
 		self.print(vtab, token.ASSIGN, blank)
 		self.exprList(token.NoPos, s.Values, 1, 0, token.NoPos)
 		extraTabs--
 
-
 	if s.Comment != nil
 		for ; extraTabs > 0; extraTabs--
 			self.print(vtab)
-
 
 		self.setComment(s.Comment)
 
@@ -1455,7 +1268,6 @@ func *printer.spec(spec ast.Spec, n int, doIndent bool)
 				self.expr(s.Name)
 				self.print(blank)
 
-
 			self.expr(s.Path)
 			self.setComment(s.Comment)
 			self.print(s.EndPos)
@@ -1464,18 +1276,15 @@ func *printer.spec(spec ast.Spec, n int, doIndent bool)
 			if n != 1
 				self.internalError("expected n = 1; got", n)
 
-
 			self.setComment(s.Doc)
 			self.identList(s.Names, doIndent) # always present
 			if s.Type != nil
 				self.print(blank)
 				self.expr(s.Type)
 
-
 			if s.Values != nil
 				self.print(blank, token.ASSIGN, blank)
 				self.exprList(token.NoPos, s.Values, 1, 0, token.NoPos)
-
 
 			self.setComment(s.Comment)
 
@@ -1487,15 +1296,11 @@ func *printer.spec(spec ast.Spec, n int, doIndent bool)
 			else
 				self.print(vtab)
 
-
 			self.expr(s.Type)
 			self.setComment(s.Comment)
 
 		default:
 			panic("unreachable")
-
-
-
 
 func *printer.genDecl(d *ast.GenDecl)
 	self.setComment(d.Doc)
@@ -1514,10 +1319,8 @@ func *printer.genDecl(d *ast.GenDecl)
 					if i > 0
 						self.linebreak(self.lineFor(s.Pos()), 1, ignore, newSection)
 
-
 					self.valueSpec(s.(*ast.ValueSpec), keepType[i])
 					newSection = self.isMultiLine(s)
-
 
 			else
 				newSection := false
@@ -1525,15 +1328,10 @@ func *printer.genDecl(d *ast.GenDecl)
 					if i > 0
 						self.linebreak(self.lineFor(s.Pos()), 1, ignore, newSection)
 
-
 					self.spec(s, n, false)
 					newSection = self.isMultiLine(s)
 
-
-
-
 			self.print(unindent, formfeed)
-
 
 	else
 
@@ -1553,7 +1351,6 @@ func *printer.nodeSize(n ast.Node, maxSize int) (size int)
 	if size, found := self.nodeSizes[n]; found
 		return size
 
-
 	size = maxSize + 1 # assume n doesn't fit
 	self.nodeSizes[n] = size
 
@@ -1565,18 +1362,13 @@ func *printer.nodeSize(n ast.Node, maxSize int) (size int)
 	if err := cfg.fprint(&buf, self.fset, n, self.nodeSizes); err != nil
 		return
 
-
 	if buf.Len() <= maxSize
 		for _, ch := range buf.Bytes()
 			if ch < ' '
 				return
 
-
-
-
 		size = buf.Len() # n fits
 		self.nodeSizes[n] = size
-
 
 	return
 
@@ -1587,7 +1379,6 @@ func *printer.bodySize(b *ast.BlockStmt, maxSize int) int
 	if pos1.IsValid() && pos2.IsValid() && self.lineFor(pos1) != self.lineFor(pos2)
 		# opening and closing brace are on different lines - don't make it a one-liner
 		return maxSize + 1
-
 
 	if len(b.List) > 5 || self.commentBefore(self.posFor(pos2))
 		# too many statements or there is a comment inside - don't make it a one-liner
@@ -1600,7 +1391,6 @@ func *printer.bodySize(b *ast.BlockStmt, maxSize int) int
 			bodySize += 2 # space for a semicolon and blank
 
 		bodySize += self.nodeSize(s, maxSize)
-
 
 	return bodySize
 
@@ -1615,7 +1405,6 @@ func *printer.adjBlock(b *ast.BlockStmt)
 	if b == nil
 		return
 
-
 	switch len(b.List)
 		case 0:
 			self.print(token.COLON)
@@ -1627,9 +1416,6 @@ func *printer.adjBlock(b *ast.BlockStmt)
 						self.print(token.COLON, blank)
 						self.stmt(s, true)
 						return
-
-
-
 
 			fallthrough
 		default:
@@ -1643,11 +1429,7 @@ func *printer.distanceFrom(from token.Pos) int
 		if f := self.posFor(from); f.Line == self.pos.Line
 			return self.pos.Column - f.Column
 
-
-
-
 	return infinity
-
 
 func *printer.funcDecl(d *ast.FuncDecl)
 	self.setComment(d.Doc)
@@ -1662,18 +1444,12 @@ func *printer.funcDecl(d *ast.FuncDecl)
 					self.rcvName = nil
 				()
 
-
-
-
-
-
 	self.expr(d.Name)
 	self.signature(d.Type.Params, d.Type.Results)
 	self.inFunc = true
 	self.adjBlock(d.Body)
 	self.inFunc = false
 	self.print(unindent)
-
 
 func *printer.decl(decl ast.Decl)
 	switch d := decl.(type)
@@ -1697,9 +1473,7 @@ func declToken(decl ast.Decl) (tok token.Token)
 		case *ast.FuncDecl:
 			tok = token.FUNC
 
-
 	return
-
 
 func *printer.declList(list []ast.Decl)
 	tok := token.ILLEGAL
@@ -1720,14 +1494,9 @@ func *printer.declList(list []ast.Decl)
 			if prev != tok || getDoc(d) != nil
 				min = 2
 
-
 			self.linebreak(self.lineFor(d.Pos()), min, ignore, false)
 
-
 		self.decl(d)
-
-
-
 
 func *printer.file(src *ast.File)
 	self.setComment(src.Doc)

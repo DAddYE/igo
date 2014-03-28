@@ -7,7 +7,6 @@ package from_go
 
 import
 	"fmt"
-	iToken "github.com/DAddYE/igo/token"
 	"go/ast"
 	"go/token"
 	"io"
@@ -17,12 +16,12 @@ import
 	"text/tabwriter"
 	"unicode"
 
+	iToken "github.com/DAddYE/igo/token"
 
 const
 	maxNewlines = 2     # max. number of newlines between source text
 	debug       = false # enable for debugging
 	infinity    = 1 << 30
-
 
 type whiteSpace byte
 
@@ -41,7 +40,6 @@ type pmode int
 const
 	noExtraLinebreak pmode = 1 << iota
 
-
 type printer struct
 
 # Configuration (does not change after initialization)
@@ -57,6 +55,7 @@ type printer struct
 	wsbuf       []whiteSpace # delayed white space
 	findent     int          # function indentation idx
 	inFunc      bool         # track if we are in a function call
+	consBrakes  int          # track consecutive line breaks
 
 	# Positions
 	# The out position differs from the pos position when the result
@@ -108,16 +107,11 @@ func *printer.commentsHaveNewline(list []*ast.Comment) bool
 			# not all comments on the same line
 			return true
 
-
 		if t := c.Text; len(t) >= 2 && (t[1] == '/' || strings.Contains(t, "\n"))
 			return true
 
-
-
-
 	_ = line
 	return false
-
 
 func *printer.nextComment()
 	for self.cindex < len(self.comments)
@@ -135,26 +129,20 @@ func *printer.nextComment()
 		# no more comments
 	self.commentOffset = infinity
 
-
 func *printer.internalError(msg ...interface)
 	if debug
 		fmt.Print(self.pos.String() + ": ")
 		fmt.Println(msg...)
 		panic("github.com/DAddYE/igo/from_go")
 
-
-
-
 func *printer.posFor(pos token.Pos) token.Position
 	# not used frequently enough to cache entire token.Position
 	return self.fset.Position(pos)
-
 
 func *printer.lineFor(pos token.Pos) int
 	if pos != self.cachedPos
 		self.cachedPos = pos
 		self.cachedLine = self.fset.Position(pos).Line
-
 
 	return self.cachedLine
 
@@ -184,8 +172,8 @@ func *printer.atLineBegin(pos token.Position)
 # writeByte writes ch n times to p.output and updates p.pos.
 func *printer.writeByte(ch byte, n int)
 	if self.out.Column == 1
+		self.consBrakes++
 		self.atLineBegin(self.pos)
-
 
 	for i := 0; i < n; i++
 		self.output = append(self.output, ch)
@@ -199,7 +187,7 @@ func *printer.writeByte(ch byte, n int)
 		self.out.Column = 1
 		return
 
-
+	self.consBrakes = 0
 	self.pos.Column += n
 	self.out.Column += n
 
@@ -216,8 +204,8 @@ func *printer.writeByte(ch byte, n int)
 #
 func *printer.writeString(pos token.Position, s string, isLit bool)
 	if self.out.Column == 1
+		self.consBrakes++
 		self.atLineBegin(pos)
-
 
 	if pos.IsValid()
 		# update p.pos (if pos is invalid, continue with existing p.pos)
@@ -225,7 +213,6 @@ func *printer.writeString(pos token.Position, s string, isLit bool)
 		# atLineBegin updates p.pos if there's indentation, but p.pos
 		# is the position of s.
 		self.pos = pos
-
 
 	if isLit
 		# Protect s such that is passes through the tabwriter
@@ -248,9 +235,6 @@ func *printer.writeString(pos token.Position, s string, isLit bool)
 			nlines++
 			li = i
 
-
-
-
 	self.pos.Offset += len(s)
 	if nlines > 0
 		self.pos.Line += nlines
@@ -259,13 +243,12 @@ func *printer.writeString(pos token.Position, s string, isLit bool)
 		self.pos.Column = c
 		self.out.Column = c
 	else
+		self.consBrakes = 0
 		self.pos.Column += len(s)
 		self.out.Column += len(s)
 
-
 	if isLit
 		self.output = append(self.output, tabwriter.Escape)
-
 
 	self.last = self.pos
 
@@ -281,12 +264,10 @@ func *printer.writeCommentPrefix(pos, next token.Position, prev, comment *ast.Co
 		# the comment is the first item to be printed - don't write any whitespace
 		return
 
-
 	if pos.IsValid() && pos.Filename != self.last.Filename
 		# comment in a different file - separate with newlines
 		self.writeByte('\f', maxNewlines)
 		return
-
 
 	if pos.Line == self.last.Line && (prev == nil || prev.Text[1] != '/')
 		# comment on the same line as last item:
@@ -310,10 +291,8 @@ func *printer.writeCommentPrefix(pos, next token.Position, prev, comment *ast.Co
 						# apply pending indentation
 						continue
 
-
 				j = i
 				break
-
 
 			self.writeWhitespace(j)
 
@@ -326,9 +305,7 @@ func *printer.writeCommentPrefix(pos, next token.Position, prev, comment *ast.Co
 				# with a blank instead of a tab
 				sep = ' '
 
-
 			self.writeByte(sep, 1)
-
 
 	else
 
@@ -362,14 +339,12 @@ func *printer.writeCommentPrefix(pos, next token.Position, prev, comment *ast.Co
 					if tok != token.RBRACE && pos.Column == next.Column
 						continue
 
-
 				case newline, formfeed:
 					self.wsbuf[i] = ignore
 					droppedLinebreak = prev == nil # record only if first comment of a group
 
 			j = i
 			break
-
 
 		self.writeWhitespace(j)
 
@@ -392,7 +367,6 @@ func *printer.writeCommentPrefix(pos, next token.Position, prev, comment *ast.Co
 		if n == 0 && prev != nil && prev.Text[1] == '/'
 			n = 1
 
-
 		if n > 0
 			# use formfeeds to break columns before a comment;
 			# this is analogous to using formfeeds to separate
@@ -407,15 +381,11 @@ func isBlank(s string) bool
 		if s[i] > ' '
 			return false
 
-
-
-
 	return true
 
 # trimRight returns s with trailing whitespace removed.
 func trimRight(s string) string
 	return strings.TrimRightFunc(s, unicode.IsSpace)
-
 
 func trimSuffix(s string) string
 	return strings.TrimRightFunc(s) do(r rune) bool
@@ -424,11 +394,6 @@ func trimSuffix(s string) string
 				return true
 			default:
 				return false
-
-
-
-
-
 
 func trimPrefix(s string) string
 	return strings.TrimLeftFunc(s) do(r rune) bool
@@ -450,9 +415,6 @@ func stripCommonPrefix(lines []string)
 		line = trimRight(line)
 		line = trimSuffix(line)
 		lines[i] = "#" + line
-
-
-
 
 func *printer.writeComment(comment *ast.Comment)
 	text := comment.Text
@@ -497,9 +459,6 @@ func *printer.writeComment(comment *ast.Comment)
 		for i, line := range lines[1:]
 			lines[1+i] = "   " + line
 
-
-
-
 	stripCommonPrefix(lines)
 
 	# write comment lines, separated by formfeed,
@@ -508,7 +467,6 @@ func *printer.writeComment(comment *ast.Comment)
 		if i > 0
 			self.writeByte('\f', 1)
 			pos = self.pos
-
 
 		if len(line) > 0
 			self.writeString(pos, trimRight(line), true)
@@ -538,13 +496,7 @@ func *printer.writeCommentSuffix(needsLinebreak bool) (wroteNewline, droppedFF b
 					if ch == formfeed
 						droppedFF = true
 
-
 					self.wsbuf[i] = ignore
-
-
-
-
-
 
 	self.writeWhitespace(len(self.wsbuf))
 
@@ -552,7 +504,6 @@ func *printer.writeCommentSuffix(needsLinebreak bool) (wroteNewline, droppedFF b
 	if needsLinebreak
 		self.writeByte('\n', 1)
 		wroteNewline = true
-
 
 	return
 
@@ -573,14 +524,11 @@ func *printer.intersperseComments(next token.Position, tok token.Token) (wroteNe
 				self.writeByte(' ', 1)
 				continue
 
-
 			self.writeCommentPrefix(self.posFor(c.Pos()), next, last, c, tok)
 			self.writeComment(c)
 			last = c
 
-
 		self.nextComment()
-
 
 	if last != nil
 		# ensure that there is a line break after a //-style comment,
@@ -611,8 +559,10 @@ func *printer.writeWhitespace(n int)
 					self.internalError("negative indentation:", self.indent)
 					self.indent = 0
 
-
 			case newline, formfeed:
+				if self.consBrakes > 0
+					continue
+
 				# A line break immediately followed by a "correcting"
 				# unindent is swapped with the unindent - this permits
 				# proper label positioning. If a comment is between
@@ -629,7 +579,6 @@ func *printer.writeWhitespace(n int)
 					i-- # do it again
 					continue
 
-
 				fallthrough
 			default:
 				self.writeByte(byte(ch), 1)
@@ -639,7 +588,6 @@ func *printer.writeWhitespace(n int)
 	for ; n < len(self.wsbuf); n++
 		self.wsbuf[i] = self.wsbuf[n]
 		i++
-
 
 	self.wsbuf = self.wsbuf[0:i]
 
@@ -651,9 +599,7 @@ func nlimit(n int) int
 	if n > maxNewlines
 		n = maxNewlines
 
-
 	return n
-
 
 func mayCombine(prev token.Token, next byte) (b bool)
 	switch prev
@@ -703,7 +649,6 @@ func *printer.print(args ...interface)
 					# LabeledStmt)
 					continue
 
-
 				i := len(self.wsbuf)
 				if i == cap(self.wsbuf)
 					# Whitespace sequences are very short so this should
@@ -711,7 +656,6 @@ func *printer.print(args ...interface)
 					# bad comment placement) if it does happen.
 					self.writeWhitespace(i)
 					i = 0
-
 
 				self.wsbuf = self.wsbuf[0 : i+1]
 				self.wsbuf[i] = x
@@ -721,7 +665,6 @@ func *printer.print(args ...interface)
 					# because comments can be interspersed before the arg
 					# in this case
 					self.impliedSemi = false
-
 
 				self.lastTok = token.ILLEGAL
 				continue
@@ -753,10 +696,8 @@ func *printer.print(args ...interface)
 					if len(self.wsbuf) != 0
 						self.internalError("whitespace buffer not empty")
 
-
 					self.wsbuf = self.wsbuf[0:1]
 					self.wsbuf[0] = ' '
-
 
 				data = s
 				# some keywords followed by a newline imply a semicolon
@@ -764,7 +705,6 @@ func *printer.print(args ...interface)
 					case token.BREAK, token.CONTINUE, token.FALLTHROUGH, token.RETURN,
 						token.INC, token.DEC, token.RPAREN, token.RBRACK, token.RBRACE:
 						impliedSemi = true
-
 
 				self.lastTok = x
 
@@ -799,7 +739,6 @@ func *printer.print(args ...interface)
 			if wroteNewline && n == maxNewlines
 				n = maxNewlines - 1
 
-
 			if n > 0
 				ch := byte('\n')
 				if droppedFF
@@ -807,9 +746,6 @@ func *printer.print(args ...interface)
 
 				self.writeByte(ch, n)
 				impliedSemi = false
-
-
-
 
 		self.writeString(next, data, isLit)
 		self.impliedSemi = impliedSemi
@@ -835,7 +771,6 @@ func *printer.flush(next token.Position, tok token.Token) (wroteNewline, dropped
 		# otherwise, write any leftover whitespace
 		self.writeWhitespace(len(self.wsbuf))
 
-
 	return
 
 # getNode returns the ast.CommentGroup associated with n, if any.
@@ -856,9 +791,7 @@ func getDoc(n ast.Node) *ast.CommentGroup
 		case *ast.File:
 			return n.Doc
 
-
 	return nil
-
 
 func *printer.printNode(node interface) error
 	# unpack *CommentedNode, if any
@@ -867,13 +800,11 @@ func *printer.printNode(node interface) error
 		node = cnode.Node
 		comments = cnode.Comments
 
-
 	if comments != nil
 		# commented node - restrict comment list to relevant range
 		n, ok := node.(ast.Node)
 		if !ok
 			goto unsupported
-
 
 		beg := n.Pos()
 		end := n.End()
@@ -890,15 +821,12 @@ func *printer.printNode(node interface) error
 		for i < len(comments) && comments[i].End() < beg
 			i++
 
-
 		j := i
 		for j < len(comments) && comments[j].Pos() < end
 			j++
 
-
 		if i < j
 			self.comments = comments[i:j]
-
 
 	else if n, ok := node.(*ast.File); ok
 		# use ast.File comments, if any
@@ -928,7 +856,6 @@ func *printer.printNode(node interface) error
 			self.file(n)
 		default:
 			goto unsupported
-
 
 	return nil
 
@@ -997,12 +924,10 @@ func *trimmer.Write(data []byte) (n int, err error)
 						self.state = inText
 						m = n
 
-
 			case inEscape:
 				if b == tabwriter.Escape
 					_, err = self.output.Write(data[m:n])
 					self.resetSpace()
-
 
 			case inText:
 				switch b
@@ -1022,12 +947,8 @@ func *trimmer.Write(data []byte) (n int, err error)
 			default:
 				panic("unreachable")
 
-
 		if err != nil
 			return
-
-
-
 
 	n = len(data)
 
@@ -1035,7 +956,6 @@ func *trimmer.Write(data []byte) (n int, err error)
 		case inEscape, inText:
 			_, err = self.output.Write(data[m:n])
 			self.resetSpace()
-
 
 	return
 
@@ -1083,12 +1003,10 @@ func *Config.fprint(output io.Writer, fset *token.FileSet, node interface, nodeS
 		if self.Mode&UseSpaces != 0
 			padchar = ' '
 
-
 		twmode := tabwriter.DiscardEmptyColumns
 		if self.Mode&TabIndent != 0
 			minwidth = 0
 			twmode |= tabwriter.TabIndent
-
 
 		output = tabwriter.NewWriter(output, minwidth, self.Tabwidth, 1, padchar, twmode)
 
@@ -1099,7 +1017,6 @@ func *Config.fprint(output io.Writer, fset *token.FileSet, node interface, nodeS
 	# flush tabwriter, if any
 	if tw, _ := output.(*tabwriter.Writer); tw != nil
 		err = tw.Flush()
-
 
 	return
 

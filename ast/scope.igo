@@ -40,7 +40,6 @@ func *Scope.Insert(obj *Object) (alt *Object)
 	if alt = self.Objects[obj.Name]; alt == nil
 		self.Objects[obj.Name] = obj
 
-
 	return
 
 # Debugging support
@@ -51,9 +50,6 @@ func *Scope.String() string
 		fmt.Fprintln(&buf)
 		for _, obj := range self.Objects
 			fmt.Fprintf(&buf, "\t%s %s\n", obj.Kind, obj.Name)
-
-
-
 
 	fmt.Fprintf(&buf, "}\n")
 	return buf.String()
@@ -94,13 +90,9 @@ func *Object.Pos() token.Pos
 				if n.Name == name
 					return n.Pos()
 
-
-
-
 		case *ImportSpec:
 			if d.Name != nil && d.Name.Name == name
 				return d.Name.Pos()
-
 
 			return d.Path.Pos()
 		case *ValueSpec:
@@ -108,31 +100,22 @@ func *Object.Pos() token.Pos
 				if n.Name == name
 					return n.Pos()
 
-
-
-
 		case *TypeSpec:
 			if d.Name.Name == name
 				return d.Name.Pos()
-
 
 		case *FuncDecl:
 			if d.Name.Name == name
 				return d.Name.Pos()
 
-
 		case *LabeledStmt:
 			if d.Label.Name == name
 				return d.Label.Pos()
-
 
 		case *AssignStmt:
 			for _, x := range d.Lhs
 				if ident, isIdent := x.(*Ident); isIdent && ident.Name == name
 					return ident.Pos()
-
-
-
 
 		case *Scope:
 			# predeclared object - nothing to do for now

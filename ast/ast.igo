@@ -78,16 +78,13 @@ func *CommentGroup.Pos() token.Pos
 func *CommentGroup.End() token.Pos
 	return self.List[len(self.List)-1].End()
 
-
 func isWhitespace(ch byte) bool
 	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
-
 
 func stripTrailingWhitespace(s string) string
 	i := len(s)
 	for i > 0 && isWhitespace(s[i-1])
 		i--
-
 
 	return s[0:i]
 
@@ -101,11 +98,9 @@ func *CommentGroup.Text() string
 	if self == nil
 		return ""
 
-
 	comments := make([]string, len(self.List))
 	for i, c := range self.List
 		comments[i] = string(c.Text)
-
 
 	lines := make([]string, 0, 10) # most comments are less than 10 lines
 	for _, c := range comments
@@ -118,7 +113,6 @@ func *CommentGroup.Text() string
 				# strip first space - required for Example tests
 				if len(c) > 0 && c[0] == ' '
 					c = c[1:]
-
 
 			case '*':
 				#-style comment
@@ -139,15 +133,11 @@ func *CommentGroup.Text() string
 			lines[n] = line
 			n++
 
-
-
-
 	lines = lines[0:n]
 
 	# Add final "" entry to get trailing newline from Join.
 	if n > 0 && lines[n-1] != ""
 		lines = append(lines, "")
-
 
 	return strings.Join(lines, "\n")
 
@@ -169,14 +159,11 @@ func *Field.Pos() token.Pos
 	if len(self.Names) > 0
 		return self.Names[0].Pos()
 
-
 	return self.Type.Pos()
-
 
 func *Field.End() token.Pos
 	if self.Tag != nil
 		return self.Tag.End()
-
 
 	return self.Type.End()
 
@@ -195,9 +182,7 @@ func *FieldList.Pos() token.Pos
 	if len(self.List) > 0
 		return self.List[0].Pos()
 
-
 	return token.NoPos
-
 
 func *FieldList.End() token.Pos
 	if self.Closing.IsValid()
@@ -207,7 +192,6 @@ func *FieldList.End() token.Pos
 	# be conservative and guard against bad ASTs
 	if n := len(self.List); n > 0
 		return self.List[n-1].End()
-
 
 	return token.NoPos
 
@@ -221,9 +205,6 @@ func *FieldList.NumFields() int
 				m = 1 # anonymous field
 
 			n += m
-
-
-
 
 	return n
 
@@ -414,9 +395,7 @@ func *CompositeLit.Pos() token.Pos
 	if self.Type != nil
 		return self.Type.Pos()
 
-
 	return self.Lbrace
-
 
 func *ParenExpr.Pos() token.Pos
 	return self.Lparen
@@ -466,7 +445,6 @@ func *MapType.Pos() token.Pos
 func *ChanType.Pos() token.Pos
 	return self.Begin
 
-
 func *BadExpr.End() token.Pos
 	return self.To
 
@@ -476,7 +454,6 @@ func *Ident.End() token.Pos
 func *Ellipsis.End() token.Pos
 	if self.Elt != nil
 		return self.Elt.End()
-
 
 	return self.Ellipsis + 3 # len("...")
 
@@ -505,9 +482,7 @@ func *TypeAssertExpr.End() token.Pos
 	if self.Type != nil
 		return self.Type.End()
 
-
 	return self.X.End()
-
 
 func *CallExpr.End() token.Pos
 	return self.Rparen + 1
@@ -534,9 +509,7 @@ func *FuncType.End() token.Pos
 	if self.Results != nil
 		return self.Results.End()
 
-
 	return self.Params.End()
-
 
 func *InterfaceType.End() token.Pos
 	return self.Methods.End()
@@ -598,11 +571,9 @@ func IsExported(name string) bool
 func *Ident.IsExported() bool
 	return IsExported(self.Name)
 
-
 func *Ident.String() string
 	if self != nil
 		return self.Name
-
 
 	return "<nil>"
 
@@ -798,16 +769,13 @@ func *ReturnStmt.End() token.Pos
 	if n := len(self.Results); n > 0
 		return self.Results[n-1].End()
 
-
 	return self.Return + 6 # len("return")
 
 func *BranchStmt.End() token.Pos
 	if self.Label != nil
 		return self.Label.End()
 
-
 	return token.Pos(int(self.TokPos) + len(self.Tok.String()))
-
 
 func *BlockStmt.End() token.Pos
 	return self.Closing + 1
@@ -816,17 +784,13 @@ func *IfStmt.End() token.Pos
 	if self.Else != nil
 		return self.Else.End()
 
-
 	return self.Body.End()
-
 
 func *CaseClause.End() token.Pos
 	if n := len(self.Body); n > 0
 		return self.Body[n-1].End()
 
-
 	return self.Colon + 1
-
 
 func *SwitchStmt.End() token.Pos
 	return self.Body.End()
@@ -838,9 +802,7 @@ func *CommClause.End() token.Pos
 	if n := len(self.Body); n > 0
 		return self.Body[n-1].End()
 
-
 	return self.Colon + 1
-
 
 func *SelectStmt.End() token.Pos
 	return self.Body.End()
@@ -919,9 +881,7 @@ func *ImportSpec.Pos() token.Pos
 	if self.Name != nil
 		return self.Name.Pos()
 
-
 	return self.Path.Pos()
-
 
 func *ValueSpec.Pos() token.Pos
 	return self.Names[0].Pos()
@@ -929,26 +889,20 @@ func *ValueSpec.Pos() token.Pos
 func *TypeSpec.Pos() token.Pos
 	return self.Name.Pos()
 
-
 func *ImportSpec.End() token.Pos
 	if self.EndPos != 0
 		return self.EndPos
 
-
 	return self.Path.End()
-
 
 func *ValueSpec.End() token.Pos
 	if n := len(self.Values); n > 0
 		return self.Values[n-1].End()
 
-
 	if self.Type != nil
 		return self.Type.End()
 
-
 	return self.Names[len(self.Names)-1].End()
-
 
 func *TypeSpec.End() token.Pos
 	return self.Type.End()
@@ -1008,7 +962,6 @@ func *GenDecl.Pos() token.Pos
 func *FuncDecl.Pos() token.Pos
 	return self.Type.Pos()
 
-
 func *BadDecl.End() token.Pos
 	return self.To
 
@@ -1016,14 +969,11 @@ func *GenDecl.End() token.Pos
 	if self.Dedent.IsValid()
 		return self.Dedent + 1
 
-
 	return self.Specs[0].End()
-
 
 func *FuncDecl.End() token.Pos
 	if self.Body != nil
 		return self.Body.End()
-
 
 	return self.Type.End()
 
@@ -1059,7 +1009,6 @@ func *File.Pos() token.Pos
 func *File.End() token.Pos
 	if n := len(self.Decls); n > 0
 		return self.Decls[n-1].End()
-
 
 	return self.Name.End()
 

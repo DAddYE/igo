@@ -10,7 +10,6 @@ import
 	"github.com/DAddYE/igo/token"
 	"sort"
 
-
 type byPos []*CommentGroup
 
 func byPos.Len() int
@@ -44,9 +43,7 @@ func CommentMap.addComment(n Node, c *CommentGroup)
 	else
 		list = append(list, c)
 
-
 	self[n] = list
-
 
 type byInterval []Node
 
@@ -56,7 +53,6 @@ func byInterval.Len() int
 func byInterval.Less(i, j int) bool
 	pi, pj := self[i].Pos(), self[j].Pos()
 	return pi < pj || pi == pj && self[i].End() > self[j].End()
-
 
 func byInterval.Swap(i, j int)
 	self[i], self[j] = self[j], self[i]
@@ -70,7 +66,6 @@ func nodeList(n Node) []Node
 		switch n.(type)
 			case nil, *CommentGroup, *Comment:
 				return false
-
 
 		list = append(list, n)
 		return true
@@ -93,7 +88,6 @@ type commentListReader struct
 
 func *commentListReader.eol() bool
 	return self.index >= len(self.list)
-
 
 func *commentListReader.next()
 	if !self.eol()
@@ -123,7 +117,6 @@ func *nodeStack.pop(pos token.Pos) (top Node)
 	for i > 0 && (*self)[i-1].End() <= pos
 		top = (*self)[i-1]
 		i--
-
 
 	*self = (*self)[0:i]
 	return top
@@ -218,14 +211,11 @@ func NewCommentMap(fset *token.FileSet, node Node, comments []*CommentGroup) Com
 						# which would imply that there were no nodes
 						panic("internal error: no comments should be associated with sentinel")
 
-
 					assoc = q
-
 
 			cmap.addComment(assoc, r.comment)
 			if r.eol()
 				return cmap
-
 
 			r.next()
 
@@ -238,9 +228,6 @@ func NewCommentMap(fset *token.FileSet, node Node, comments []*CommentGroup) Com
 			case *File, *Field, Decl, Spec, Stmt:
 				stack.push(q)
 
-
-
-
 	return cmap
 
 # Update replaces an old node in the comment map with the new node
@@ -251,7 +238,6 @@ func CommentMap.Update(old, new Node) Node
 	if list := self[old]; len(list) > 0
 		delete(self, old)
 		self[new] = append(self[new], list...)
-
 
 	return new
 
@@ -265,9 +251,7 @@ func CommentMap.Filter(node Node) CommentMap
 		if g := self[n]; len(g) > 0
 			umap[n] = g
 
-
 		return true
-
 
 	return umap
 
@@ -279,10 +263,8 @@ func CommentMap.Comments() []*CommentGroup
 	for _, e := range self
 		list = append(list, e...)
 
-
 	sortComments(list)
 	return list
-
 
 func summary(list []*CommentGroup) string
 	const maxLen = 40
@@ -298,7 +280,6 @@ func summary(list []*CommentGroup) string
 				if buf.Len() >= maxLen
 					break loop
 
-
 				buf.WriteString(comment.Text)
 
 			# truncate if too long
@@ -313,11 +294,7 @@ func summary(list []*CommentGroup) string
 				case '\t', '\n', '\r':
 					bytes[i] = ' '
 
-
-
-
 		return string(bytes)
-
 
 func CommentMap.String() string
 	var buf bytes.Buffer
@@ -330,9 +307,7 @@ func CommentMap.String() string
 		else
 			s = fmt.Sprintf("%T", node)
 
-
 		fmt.Fprintf(&buf, "\t%p  %20s:  %s\n", node, s, summary(comment))
-
 
 	fmt.Fprintln(&buf, "}")
 	return buf.String()

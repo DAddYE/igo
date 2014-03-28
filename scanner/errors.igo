@@ -26,7 +26,6 @@ func Error.Error() string
 		# TODO(gri) reconsider the semantics of Position.IsValid
 		return self.Pos.String() + ": " + self.Msg
 
-
 	return self.Msg
 
 # ErrorList is a list of *Errors.
@@ -49,7 +48,6 @@ func ErrorList.Len() int
 func ErrorList.Swap(i, j int)
 	self[i], self[j] = self[j], self[i]
 
-
 func ErrorList.Less(i, j int) bool
 	e := &self[i].Pos
 	f := &self[j].Pos
@@ -59,17 +57,12 @@ func ErrorList.Less(i, j int) bool
 	if e.Filename < f.Filename
 		return true
 
-
 	if e.Filename == f.Filename
 		if e.Line < f.Line
 			return true
 
-
 		if e.Line == f.Line
 			return e.Column < f.Column
-
-
-
 
 	return false
 
@@ -91,9 +84,6 @@ func *ErrorList.RemoveMultiples()
 			(*self)[i] = e
 			i++
 
-
-
-
 	(*self) = (*self)[0:i]
 
 # An ErrorList implements the error interface.
@@ -104,7 +94,6 @@ func ErrorList.Error() string
 		case 1:
 			return self[0].Error()
 
-
 	return fmt.Sprintf("%s (and %d more errors)", self[0], len(self)-1)
 
 # Err returns an error equivalent to this error list.
@@ -112,7 +101,6 @@ func ErrorList.Error() string
 func ErrorList.Err() error
 	if len(self) == 0
 		return nil
-
 
 	return self
 
@@ -125,9 +113,6 @@ func PrintError(w io.Writer, err error)
 		for _, e := range list
 			fmt.Fprintf(w, "%s\n", e)
 
-
 	else if err != nil
 		fmt.Fprintf(w, "%s\n", err)
-
-
 

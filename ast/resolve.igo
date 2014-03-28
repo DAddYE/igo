@@ -12,19 +12,15 @@ import
 	"github.com/DAddYE/igo/token"
 	"strconv"
 
-
 type pkgBuilder struct
 	fset   *token.FileSet
 	errors scanner.ErrorList
 
-
 func *pkgBuilder.error(pos token.Pos, msg string)
 	self.errors.Add(self.fset.Position(pos), msg)
 
-
 func *pkgBuilder.errorf(pos token.Pos, format string, args ...interface)
 	self.error(pos, fmt.Sprintf(format, args...))
-
 
 func *pkgBuilder.declare(scope, altScope *Scope, obj *Object)
 	alt := scope.Insert(obj)
@@ -32,26 +28,18 @@ func *pkgBuilder.declare(scope, altScope *Scope, obj *Object)
 		# see if there is a conflicting declaration in altScope
 		alt = altScope.Lookup(obj.Name)
 
-
 	if alt != nil
 		prevDecl := ""
 		if pos := alt.Pos(); pos.IsValid()
 			prevDecl = fmt.Sprintf("\n\tprevious declaration at %s", self.fset.Position(pos))
 
-
 		self.error(obj.Pos(), fmt.Sprintf("%s redeclared in this block%s", obj.Name, prevDecl))
-
-
-
 
 func resolve(scope *Scope, ident *Ident) bool
 	for ; scope != nil; scope = scope.Outer
 		if obj := scope.Lookup(ident.Name); obj != nil
 			ident.Obj = obj
 			return true
-
-
-
 
 	return false
 
@@ -113,7 +101,6 @@ func NewPackage(fset *token.FileSet, files map[string]*File, importer Importer, 
 				importErrors = true
 				continue
 
-
 			path, _ := strconv.Unquote(spec.Path.Value)
 			pkg, err := importer(imports, path)
 			if err != nil
@@ -136,7 +123,6 @@ func NewPackage(fset *token.FileSet, files map[string]*File, importer Importer, 
 				for _, obj := range pkg.Data.(*Scope).Objects
 					p.declare(fileScope, pkgScope, obj)
 
-
 			else if name != "_"
 				# declare imported package object in file scope
 				# (do not re-use pkg in the file scope but create
@@ -155,16 +141,12 @@ func NewPackage(fset *token.FileSet, files map[string]*File, importer Importer, 
 			# incorrectly to universe objects)
 			pkgScope.Outer = nil
 
-
 		i := 0
 		for _, ident := range file.Unresolved
 			if !resolve(fileScope, ident)
 				p.errorf(ident.Pos(), "undeclared name: %s", ident.Name)
 				file.Unresolved[i] = ident
 				i++
-
-
-
 
 		file.Unresolved = file.Unresolved[0:i]
 		pkgScope.Outer = universe # reset universe scope

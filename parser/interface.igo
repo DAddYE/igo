@@ -32,18 +32,14 @@ func readSource(filename string, src interface) ([]byte, error)
 				if s != nil
 					return s.Bytes(), nil
 
-
 			case io.Reader:
 				var buf bytes.Buffer
 				if _, err := io.Copy(&buf, s); err != nil
 					return nil, err
 
-
 				return buf.Bytes(), nil
 
-
 		return nil, errors.New("invalid source")
-
 
 	return ioutil.ReadFile(filename)
 
@@ -87,7 +83,6 @@ func ParseFile(fset *token.FileSet, filename string, src interface, mode Mode) (
 	if err != nil
 		return nil, err
 
-
 	var p parser
 	defer func()
 		if e := recover(); e != nil
@@ -102,7 +97,6 @@ func ParseFile(fset *token.FileSet, filename string, src interface, mode Mode) (
 				Name:  new(ast.Ident),
 				Scope: ast.NewScope(nil),
 			}
-
 
 		p.errors.Sort()
 		err = p.errors.Err()
@@ -129,13 +123,11 @@ func ParseDir(fset *token.FileSet, path string, filter func(os.FileInfo) bool, m
 	if err != nil
 		return nil, err
 
-
 	defer fd.Close()
 
 	list, err := fd.Readdir(-1)
 	if err != nil
 		return nil, err
-
 
 	pkgs = make(map[string]*ast.Package)
 	for _, d := range list
@@ -151,15 +143,9 @@ func ParseDir(fset *token.FileSet, path string, filter func(os.FileInfo) bool, m
 					}
 					pkgs[name] = pkg
 
-
 				pkg.Files[filename] = src
 			else if first == nil
 				first = err
-
-
-
-
-
 
 	return
 
@@ -184,7 +170,6 @@ func ParseExpr(x string) (ast.Expr, error)
 	if p.errors.Len() > 0
 		p.errors.Sort()
 		return nil, p.errors.Err()
-
 
 	return e, nil
 

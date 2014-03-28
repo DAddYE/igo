@@ -23,7 +23,6 @@ func NotNilFilter(_ string, v reflect.Value) bool
 		case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
 			return !v.IsNil()
 
-
 	return true
 
 # Fprint prints the (sub-)tree starting at AST node x to w.
@@ -58,7 +57,6 @@ func Fprint(w io.Writer, fset *token.FileSet, x interface, f FieldFilter) (err e
 		p.printf("nil\n")
 		return
 
-
 	p.print(reflect.ValueOf(x))
 	p.printf("\n")
 
@@ -68,7 +66,6 @@ func Fprint(w io.Writer, fset *token.FileSet, x interface, f FieldFilter) (err e
 # Print(fset, x) is the same as Fprint(os.Stdout, fset, x, NotNilFilter).
 func Print(fset *token.FileSet, x interface) error
 	return Fprint(os.Stdout, fset, x, NotNilFilter)
-
 
 type printer struct
 	output io.Writer
@@ -91,31 +88,22 @@ func *printer.Write(data []byte) (n int, err error)
 			if err != nil
 				return
 
-
 			self.line++
 		else if self.last == '\n'
 			_, err = fmt.Fprintf(self.output, "%6d  ", self.line)
 			if err != nil
 				return
 
-
 			for j := self.indent; j > 0; j--
 				_, err = self.output.Write(indent)
 				if err != nil
 					return
 
-
-
-
-
-
 		self.last = b
-
 
 	if len(data) > n
 		m, err = self.output.Write(data[n:])
 		n += m
-
 
 	return
 
@@ -143,7 +131,6 @@ func *printer.print(x reflect.Value)
 		self.printf("nil")
 		return
 
-
 	switch x.Kind()
 		case reflect.Interface:
 			self.print(x.Elem())
@@ -159,9 +146,7 @@ func *printer.print(x reflect.Value)
 					self.print(x.MapIndex(key))
 					self.printf("\n")
 
-
 				self.indent--
-
 
 			self.printf("}")
 
@@ -177,7 +162,6 @@ func *printer.print(x reflect.Value)
 				self.ptrmap[ptr] = self.line
 				self.print(x.Elem())
 
-
 		case reflect.Array:
 			self.printf("%s {", x.Type())
 			if x.Len() > 0
@@ -188,9 +172,7 @@ func *printer.print(x reflect.Value)
 					self.print(x.Index(i))
 					self.printf("\n")
 
-
 				self.indent--
-
 
 			self.printf("}")
 
@@ -198,7 +180,6 @@ func *printer.print(x reflect.Value)
 			if s, ok := x.Interface().([]byte); ok
 				self.printf("%#q", s)
 				return
-
 
 			self.printf("%s (len = %d) {", x.Type(), x.Len())
 			if x.Len() > 0
@@ -209,9 +190,7 @@ func *printer.print(x reflect.Value)
 					self.print(x.Index(i))
 					self.printf("\n")
 
-
 				self.indent--
-
 
 			self.printf("}")
 
@@ -230,15 +209,9 @@ func *printer.print(x reflect.Value)
 							self.printf("\n")
 							first = false
 
-
 						self.printf("%s: ", name)
 						self.print(value)
 						self.printf("\n")
-
-
-
-
-
 
 			self.indent--
 			self.printf("}")
@@ -258,6 +231,4 @@ func *printer.print(x reflect.Value)
 
 					# default
 			self.printf("%v", v)
-
-
 
