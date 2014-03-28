@@ -1103,14 +1103,18 @@ func (p *parser) parseBody(scope *ast.Scope) *ast.BlockStmt {
 		p.topScope = scope // open function scope
 		// Allow empty body
 		var list []ast.Stmt
+		var pos token.Pos
 		if p.tok == token.SEMICOLON {
+			pos = p.pos
 			p.expectSemi()
 		} else {
 			list = []ast.Stmt{p.parseSmallStmt()}
+			pos = list[len(list)-1].End()
+			p.expectSemi()
 		}
 		p.closeScope()
 
-		return &ast.BlockStmt{Opening: colon, List: list, Closing: p.pos, Small: true}
+		return &ast.BlockStmt{Opening: colon + 1, List: list, Closing: pos, Small: true}
 	} else {
 		p.expectSemi()
 
